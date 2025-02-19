@@ -1,8 +1,7 @@
 [package]
-name = "operate"
+name = "subtractor"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 adder = { path = "../adder"}
-subtractor = { path = "../subtractor"}

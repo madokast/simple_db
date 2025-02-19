@@ -1,5 +1,5 @@
 [workspace]
 
 resolver = "2"
-members = ["adder", "operate"]
+members = ["adder", "operate", "subtractor"]
 
