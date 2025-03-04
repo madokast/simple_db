@@ -1,1 +1,1 @@
-extern crate self as simple_db;
+pub mod sql;
