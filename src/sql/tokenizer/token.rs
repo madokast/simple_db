@@ -25,21 +25,21 @@ pub enum Token {
     Identifier(String), // 表名、列名
     StringLiteral(String),
     IntegerLiteral(u16, Option<u64>), // 前导零数目 + 数字
-    Equal, // =
-    NotEqual, // <> or !=
-    LessThan, // <
-    GreaterThan, // >
-    LessThanOrEqual, // <=
-    GreaterThanOrEqual, // >=
-    Plus, // +
-    Minus, // -
-    Multiply, // *
-    Divide, // /
-    LeftParenthesis, // (
-    RightParenthesis, // )
+    Equal,                            // =
+    NotEqual,                         // <> or !=
+    LessThan,                         // <
+    GreaterThan,                      // >
+    LessThanOrEqual,                  // <=
+    GreaterThanOrEqual,               // >=
+    Plus,                             // +
+    Minus,                            // -
+    Multiply,                         // *
+    Divide,                           // /
+    LeftParenthesis,                  // (
+    RightParenthesis,                 // )
     Comma,                            // 逗号
     Semicolon,                        // 分号
-    Period, // .
+    Period,                           // .
 }
 
 impl Display for Token {
@@ -93,11 +93,23 @@ impl Display for ParsedTokens {
             // 有些 token 前需要加上空格
             if index > 0 {
                 match token.token {
-                    Token::Keyword(_) | Token::Identifier(_) | Token::StringLiteral(_) | Token::IntegerLiteral(_, _) => f.write_str(" ")?,
-                    Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan |
-                    Token::LessThanOrEqual | Token::GreaterThanOrEqual | Token::Plus |
-                    Token::Minus | Token::Multiply | Token::Divide | Token::LeftParenthesis |
-                    Token::RightParenthesis | Token::Period => f.write_str(" ")?,
+                    Token::Keyword(_)
+                    | Token::Identifier(_)
+                    | Token::StringLiteral(_)
+                    | Token::IntegerLiteral(_, _) => f.write_str(" ")?,
+                    Token::Equal
+                    | Token::NotEqual
+                    | Token::LessThan
+                    | Token::GreaterThan
+                    | Token::LessThanOrEqual
+                    | Token::GreaterThanOrEqual
+                    | Token::Plus
+                    | Token::Minus
+                    | Token::Multiply
+                    | Token::Divide
+                    | Token::LeftParenthesis
+                    | Token::RightParenthesis
+                    | Token::Period => f.write_str(" ")?,
                     Token::Comma | Token::Semicolon => {}
                 };
             }

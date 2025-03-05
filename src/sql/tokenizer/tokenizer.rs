@@ -71,10 +71,7 @@ impl Tokenizer {
     }
 
     /// Reads the next bang neq
-    fn next_bang(
-        &self,
-        scanner: &mut Scanner<'_>
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_bang(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = scanner.location();
         scanner.next();
         let token: Token = match scanner.peek() {
@@ -82,7 +79,7 @@ impl Tokenizer {
                 '=' => {
                     scanner.next();
                     Token::NotEqual
-                },
+                }
                 _ => {
                     return self.make_error(format_args!("unexpected char {}", c), scanner);
                 }
@@ -94,13 +91,8 @@ impl Tokenizer {
         Ok(Some(ParsedToken::new(token, start_location)))
     }
 
-
-
     /// Read the next string literal
-    fn next_string(
-        &self,
-        scanner: &mut Scanner<'_>,
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_string(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = scanner.location();
         let mut text: String = String::new();
 
@@ -111,27 +103,35 @@ impl Tokenizer {
                     scanner.next();
                     if let Some(n) = scanner.peek() {
                         match n {
-                            '\'' => { // escape
+                            '\'' => {
+                                // escape
                                 text.push('\'');
                                 scanner.next();
-                            },
+                            }
                             ';' | '=' | '>' | '<' | ',' | '.' => {
                                 break;
-                            },
+                            }
                             ' ' | '\r' | '\n' => {
                                 scanner.next();
                                 break;
-                            },
+                            }
                             _ => {
-                                return self.make_error(format_args!("unexpected char {} after text {}", n, text), scanner);
+                                return self.make_error(
+                                    format_args!("unexpected char {} after text {}", n, text),
+                                    scanner,
+                                );
                             }
                         }
                     }
-                },
+                }
                 '\r' | '\n' => {
-                    return self.make_error(format_args!("unexpected newline in string literal"), scanner);
-                },
-                '\\' => { // escape \
+                    return self.make_error(
+                        format_args!("unexpected newline in string literal"),
+                        scanner,
+                    );
+                }
+                '\\' => {
+                    // escape \
                     scanner.next();
                     match scanner.peek() {
                         Some(c) => match c {
@@ -142,27 +142,35 @@ impl Tokenizer {
                             't' => text.push('\t'),
                             'r' => text.push('\r'),
                             '0' => text.push('\0'),
-                            _ => return self.make_error(format_args!("unknown escape char {}", c), scanner)
+                            _ => {
+                                return self
+                                    .make_error(format_args!("unknown escape char {}", c), scanner)
+                            }
                         },
-                        None => return self.make_error(format_args!("unexpected end of string literal"), scanner),
+                        None => {
+                            return self.make_error(
+                                format_args!("unexpected end of string literal"),
+                                scanner,
+                            )
+                        }
                     }
                     scanner.next();
-                },
+                }
                 _ => {
                     text.push(c);
                     scanner.next();
-                },
+                }
             }
         }
 
-        Ok(Some(ParsedToken::new(Token::StringLiteral(text), start_location)))
+        Ok(Some(ParsedToken::new(
+            Token::StringLiteral(text),
+            start_location,
+        )))
     }
 
     /// Reads the next gt, gte
-    fn next_great(
-        &self,
-        scanner: &mut Scanner<'_>
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_great(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = scanner.location();
 
         scanner.next();
@@ -171,10 +179,8 @@ impl Tokenizer {
                 '=' => {
                     scanner.next();
                     Token::GreaterThanOrEqual
-                },
-                _ => {
-                    Token::GreaterThan
                 }
+                _ => Token::GreaterThan,
             },
             None => {
                 return self.make_error(format_args!("unexpected end of sql"), scanner);
@@ -183,13 +189,9 @@ impl Tokenizer {
 
         Ok(Some(ParsedToken::new(token, start_location)))
     }
-    
 
     /// Reads the next lt, lte, neq
-    fn next_less(
-        &self,
-        scanner: &mut Scanner<'_>
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_less(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = scanner.location();
 
         scanner.next();
@@ -198,20 +200,18 @@ impl Tokenizer {
                 '=' => {
                     scanner.next();
                     Token::LessThanOrEqual
-                },
+                }
                 '>' => {
                     scanner.next();
                     Token::NotEqual
-                },
-                _ => {
-                    Token::LessThan
                 }
+                _ => Token::LessThan,
             },
             None => {
                 return self.make_error(format_args!("unexpected end of sql"), scanner);
             }
         };
-        
+
         Ok(Some(ParsedToken::new(token, start_location)))
     }
 
@@ -514,7 +514,9 @@ mod test {
 
     #[test]
     fn select_text_escape3() {
-        let tokens = Tokenizer::new().tokenize("SELECT '''he\\r\\nllo''';").unwrap();
+        let tokens = Tokenizer::new()
+            .tokenize("SELECT '''he\\r\\nllo''';")
+            .unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(tokens.tokens()[1].location.column_number, 8);
         assert_eq!(tokens.tokens()[2].location.column_number, 23);
