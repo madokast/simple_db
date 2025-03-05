@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::str_scanner::TokenLocation;
 
 #[derive(
@@ -27,6 +29,22 @@ pub enum Token {
     Semicolon,                        // 分号
 }
 
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Keyword(keyword) => write!(f, "{}", keyword),
+            Token::Identifier(ident) => write!(f, "{}", ident),
+            Token::StringLiteral(s) => write!(f, "'{}'", s),
+            Token::IntegerLiteral(zeros, num) => match num {
+                Some(n) => write!(f, "{:0>width$}{}", "", n, width = *zeros as usize),
+                None => write!(f, "{:0>width$}", "", width = *zeros as usize),
+            },
+            Token::Comma => write!(f, ","),
+            Token::Semicolon => write!(f, ";"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ParsedTokens {
     tokens: Vec<ParsedToken>,
@@ -43,6 +61,26 @@ impl ParsedTokens {
     }
 }
 
+impl Display for ParsedTokens {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (index, token) in self.tokens().iter().enumerate() {
+            // 有些 token 前需要加上空格
+            if index > 0 {
+                match token.token {
+                    Token::Keyword(_) | Token::Identifier(_) => f.write_str(" ")?,
+                    Token::StringLiteral(_) => f.write_str(" ")?,
+                    Token::IntegerLiteral(_, _) => f.write_str(" ")?,
+                    Token::Comma => {}
+                    Token::Semicolon => {}
+                };
+            }
+
+            f.write_fmt(format_args!("{}", token.token))?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct ParsedToken {
     pub token: Token,
@@ -52,5 +90,40 @@ pub struct ParsedToken {
 impl ParsedToken {
     pub fn new(token: Token, location: TokenLocation) -> Self {
         Self { token, location }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sql::tokenizer::token::Keyword;
+
+    use super::Token;
+
+    #[test]
+    fn token_display_kw() {
+        assert_eq!(format!("{}", Token::Keyword(Keyword::SELECT)), "SELECT");
+    }
+
+    #[test]
+    fn token_display_id() {
+        assert_eq!(
+            format!("{}", Token::Identifier("abc123".to_string())),
+            "abc123"
+        );
+    }
+
+    #[test]
+    fn token_display_number() {
+        assert_eq!(format!("{}", Token::IntegerLiteral(0, Some(123))), "123");
+    }
+
+    #[test]
+    fn token_display_number2() {
+        assert_eq!(format!("{}", Token::IntegerLiteral(3, Some(123))), "000123");
+    }
+
+    #[test]
+    fn token_display_number3() {
+        assert_eq!(format!("{}", Token::IntegerLiteral(4, None)), "0000");
     }
 }

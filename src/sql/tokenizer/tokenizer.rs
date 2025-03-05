@@ -301,6 +301,7 @@ mod test {
     #[test]
     fn select_abc_from_def() {
         let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
+        println!("[{}]", tokens);
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -318,10 +319,22 @@ mod test {
     fn select_abc_from_def_loc() {
         let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
-        assert_eq!(tokens.tokens()[1].location.column_number, 1 + "SELECT ".len());
-        assert_eq!(tokens.tokens()[2].location.column_number, 1 + "SELECT abc ".len());
-        assert_eq!(tokens.tokens()[3].location.column_number, 1 + "SELECT abc from ".len());
-        assert_eq!(tokens.tokens()[4].location.column_number, 1 + "SELECT abc from dEf".len());
+        assert_eq!(
+            tokens.tokens()[1].location.column_number,
+            1 + "SELECT ".len()
+        );
+        assert_eq!(
+            tokens.tokens()[2].location.column_number,
+            1 + "SELECT abc ".len()
+        );
+        assert_eq!(
+            tokens.tokens()[3].location.column_number,
+            1 + "SELECT abc from ".len()
+        );
+        assert_eq!(
+            tokens.tokens()[4].location.column_number,
+            1 + "SELECT abc from dEf".len()
+        );
     }
 
     fn assert_eq<T: PartialEq + Debug>(value: T, expect: T) {
