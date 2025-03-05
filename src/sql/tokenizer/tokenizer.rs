@@ -457,23 +457,6 @@ mod test {
     }
 
     #[test]
-    fn select_abc_from_def() {
-        let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
-        println!("[{}]", tokens);
-        let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
-        assert_eq(
-            tokens,
-            vec![
-                Token::Keyword(Keyword::SELECT),
-                Token::Identifier("abc".to_string()),
-                Token::Keyword(Keyword::FROM),
-                Token::Identifier("dEf".to_string()),
-                Token::Semicolon,
-            ],
-        );
-    }
-
-    #[test]
     fn select_text() {
         let tokens = Tokenizer::new().tokenize("SELECT 'hello';").unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
@@ -532,6 +515,23 @@ mod test {
     }
 
     #[test]
+    fn select_abc_from_def() {
+        let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
+        println!("[{}]", tokens);
+        let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
+        assert_eq(
+            tokens,
+            vec![
+                Token::Keyword(Keyword::SELECT),
+                Token::Identifier("abc".to_string()),
+                Token::Keyword(Keyword::FROM),
+                Token::Identifier("dEf".to_string()),
+                Token::Semicolon,
+            ],
+        );
+    }
+
+    #[test]
     fn select_abc_from_def_loc() {
         let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
@@ -550,6 +550,31 @@ mod test {
         assert_eq!(
             tokens.tokens()[4].location.column_number,
             1 + "SELECT abc from dEf".len()
+        );
+    }
+
+    #[test]
+    fn select_abc_from_def_where() {
+        let tokens = Tokenizer::new().tokenize("SELECT abc, kk, 1 from dEf where cc > 12;").unwrap();
+        println!("[{}]", tokens);
+        let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
+        assert_eq(
+            tokens,
+            vec![
+                Token::Keyword(Keyword::SELECT),
+                Token::Identifier("abc".to_string()),
+                Token::Comma,
+                Token::Identifier("kk".to_string()),
+                Token::Comma,
+                Token::IntegerLiteral(0, Some(1)),
+                Token::Keyword(Keyword::FROM),
+                Token::Identifier("dEf".to_string()),
+                Token::Keyword(Keyword::WHERE),
+                Token::Identifier("cc".to_string()),
+                Token::GreaterThan,
+                Token::IntegerLiteral(0, Some(12)),
+                Token::Semicolon,
+            ],
         );
     }
 
