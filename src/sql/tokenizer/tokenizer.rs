@@ -47,14 +47,172 @@ impl Tokenizer {
             match scanner.peek() {
                 Some(first) => match first {
                     'a'..='z' | 'A'..='Z' => return self.next_id_kw(scanner, first),
+                    '\'' => return self.next_string(scanner),
                     '0'..='9' => return self.next_number(scanner, first),
                     ' ' | '\r' | '\n' => scanner.next(),
+                    '=' => return self.token_and_next(Token::Equal, scanner),
                     ';' => return self.token_and_next(Token::Semicolon, scanner),
+                    '.' => return self.token_and_next(Token::Period, scanner),
+                    ',' => return self.token_and_next(Token::Comma, scanner),
+                    '+' => return self.token_and_next(Token::Plus, scanner),
+                    '-' => return self.token_and_next(Token::Minus, scanner),
+                    '*' => return self.token_and_next(Token::Multiply, scanner),
+                    '/' => return self.token_and_next(Token::Divide, scanner),
+                    '(' => return self.token_and_next(Token::LeftParenthesis, scanner),
+                    ')' => return self.token_and_next(Token::RightParenthesis, scanner),
+                    '<' => return self.next_less(scanner),
+                    '>' => return self.next_great(scanner),
+                    '!' => return self.next_bang(scanner),
                     _ => return self.make_error(format_args!("unknown char {}", first), scanner),
                 },
                 None => return Ok(None),
             }
         }
+    }
+
+    /// Reads the next bang neq
+    fn next_bang(
+        &self,
+        scanner: &mut Scanner<'_>
+    ) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = scanner.location();
+        scanner.next();
+        let token: Token = match scanner.peek() {
+            Some(c) => match c {
+                '=' => {
+                    scanner.next();
+                    Token::NotEqual
+                },
+                _ => {
+                    return self.make_error(format_args!("unexpected char {}", c), scanner);
+                }
+            },
+            None => {
+                return self.make_error(format_args!("unexpected end of sql"), scanner);
+            }
+        };
+        Ok(Some(ParsedToken::new(token, start_location)))
+    }
+
+
+
+    /// Read the next string literal
+    fn next_string(
+        &self,
+        scanner: &mut Scanner<'_>,
+    ) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = scanner.location();
+        let mut text: String = String::new();
+
+        scanner.next(); // consume
+        while let Some(c) = scanner.peek() {
+            match c {
+                '\'' => {
+                    scanner.next();
+                    if let Some(n) = scanner.peek() {
+                        match n {
+                            '\'' => { // escape
+                                text.push('\'');
+                                scanner.next();
+                            },
+                            ';' | '=' | '>' | '<' | ',' | '.' => {
+                                break;
+                            },
+                            ' ' | '\r' | '\n' => {
+                                scanner.next();
+                                break;
+                            },
+                            _ => {
+                                return self.make_error(format_args!("unexpected char {} after text {}", n, text), scanner);
+                            }
+                        }
+                    }
+                },
+                '\r' | '\n' => {
+                    return self.make_error(format_args!("unexpected newline in string literal"), scanner);
+                },
+                '\\' => { // escape \
+                    scanner.next();
+                    match scanner.peek() {
+                        Some(c) => match c {
+                            '\\' => text.push('\\'),
+                            '\'' => text.push('\''),
+                            '\"' => text.push('\"'),
+                            'n' => text.push('\n'),
+                            't' => text.push('\t'),
+                            'r' => text.push('\r'),
+                            '0' => text.push('\0'),
+                            _ => return self.make_error(format_args!("unknown escape char {}", c), scanner)
+                        },
+                        None => return self.make_error(format_args!("unexpected end of string literal"), scanner),
+                    }
+                    scanner.next();
+                },
+                _ => {
+                    text.push(c);
+                    scanner.next();
+                },
+            }
+        }
+
+        Ok(Some(ParsedToken::new(Token::StringLiteral(text), start_location)))
+    }
+
+    /// Reads the next gt, gte
+    fn next_great(
+        &self,
+        scanner: &mut Scanner<'_>
+    ) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = scanner.location();
+
+        scanner.next();
+        let token: Token = match scanner.peek() {
+            Some(c) => match c {
+                '=' => {
+                    scanner.next();
+                    Token::GreaterThanOrEqual
+                },
+                _ => {
+                    Token::GreaterThan
+                }
+            },
+            None => {
+                return self.make_error(format_args!("unexpected end of sql"), scanner);
+            }
+        };
+
+        Ok(Some(ParsedToken::new(token, start_location)))
+    }
+    
+
+    /// Reads the next lt, lte, neq
+    fn next_less(
+        &self,
+        scanner: &mut Scanner<'_>
+    ) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = scanner.location();
+
+        scanner.next();
+        let token: Token = match scanner.peek() {
+            Some(c) => match c {
+                '=' => {
+                    scanner.next();
+                    Token::LessThanOrEqual
+                },
+                '>' => {
+                    scanner.next();
+                    Token::NotEqual
+                },
+                _ => {
+                    Token::LessThan
+                }
+            },
+            None => {
+                return self.make_error(format_args!("unexpected end of sql"), scanner);
+            }
+        };
+        
+        Ok(Some(ParsedToken::new(token, start_location)))
     }
 
     /// Reads the next number
@@ -310,6 +468,62 @@ mod test {
                 Token::Identifier("abc".to_string()),
                 Token::Keyword(Keyword::FROM),
                 Token::Identifier("dEf".to_string()),
+                Token::Semicolon,
+            ],
+        );
+    }
+
+    #[test]
+    fn select_text() {
+        let tokens = Tokenizer::new().tokenize("SELECT 'hello';").unwrap();
+        assert_eq!(tokens.tokens()[0].location.column_number, 1);
+        assert_eq!(tokens.tokens()[1].location.column_number, 8);
+        assert_eq!(tokens.tokens()[2].location.column_number, 15);
+        let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
+        assert_eq(
+            tokens,
+            vec![
+                Token::Keyword(Keyword::SELECT),
+                Token::StringLiteral("hello".to_string()),
+                Token::Semicolon,
+            ],
+        );
+    }
+
+    #[test]
+    fn select_text_escape() {
+        let tokens = Tokenizer::new().tokenize("SELECT '''he''llo''';").unwrap();
+        assert_eq!(tokens.tokens()[0].location.column_number, 1);
+        assert_eq!(tokens.tokens()[1].location.column_number, 8);
+        assert_eq!(tokens.tokens()[2].location.column_number, 21);
+        let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
+        assert_eq(
+            tokens,
+            vec![
+                Token::Keyword(Keyword::SELECT),
+                Token::StringLiteral("'he'llo'".to_string()),
+                Token::Semicolon,
+            ],
+        );
+    }
+
+    #[test]
+    fn select_text_escape2() {
+        assert!(Tokenizer::new().tokenize("SELECT '''he\nllo''';").is_err())
+    }
+
+    #[test]
+    fn select_text_escape3() {
+        let tokens = Tokenizer::new().tokenize("SELECT '''he\\r\\nllo''';").unwrap();
+        assert_eq!(tokens.tokens()[0].location.column_number, 1);
+        assert_eq!(tokens.tokens()[1].location.column_number, 8);
+        assert_eq!(tokens.tokens()[2].location.column_number, 23);
+        let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
+        assert_eq(
+            tokens,
+            vec![
+                Token::Keyword(Keyword::SELECT),
+                Token::StringLiteral("'he\r\nllo'".to_string()),
                 Token::Semicolon,
             ],
         );
