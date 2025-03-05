@@ -18,6 +18,15 @@ impl TokenLocation {
         }
     }
 
+    pub fn uninit() -> Self {
+        Self {
+            line_number: 0,
+            column_number: 0,
+            offset: 0,
+            previous: char::default(),
+        }
+    }
+
     pub fn next_char(&mut self, c: char) {
         match c {
             '\r' => {
@@ -72,13 +81,9 @@ impl<'a> Scanner<'a> {
     }
 
     /// next advances the iter
-    pub fn next(&mut self) -> Option<char> {
-        match self.peekable.next() {
-            Some(c) => {
-                self.location.next_char(c);
-                Some(c)
-            }
-            None => None,
+    pub fn next(&mut self) {
+        if let Some(c) = self.peekable.next() {
+            self.location.next_char(c);
         }
     }
 

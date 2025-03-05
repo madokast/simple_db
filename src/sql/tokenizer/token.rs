@@ -1,6 +1,8 @@
 use super::str_scanner::TokenLocation;
 
 #[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
@@ -15,15 +17,14 @@ pub enum Keyword {
     WHERE,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Token {
     Keyword(Keyword),
     Identifier(String), // 表名、列名
     StringLiteral(String),
-    IntegerLiteral(i64),
-    Comma,     // 逗号
-    Semicolon, // 分号
-    Asterisk,  // 星号
+    IntegerLiteral(u16, Option<u64>), // 前导零数目 + 数字
+    Comma,                            // 逗号
+    Semicolon,                        // 分号
 }
 
 #[derive(Debug)]
