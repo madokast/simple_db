@@ -22,26 +22,27 @@ impl TokenLocation {
         match c {
             '\r' => {
                 // new line
-                self.column_number=1;
-                self.line_number+=1;
-            },
+                self.column_number = 1;
+                self.line_number += 1;
+            }
             '\n' => {
                 match self.previous {
-                    '\r' => { // \r\n
-                        assert!(self.column_number==1)
-                    },
+                    '\r' => {
+                        // \r\n
+                        assert!(self.column_number == 1)
+                    }
                     _ => {
                         // new line
-                        self.column_number=1;
-                        self.line_number+=1;
+                        self.column_number = 1;
+                        self.line_number += 1;
                     }
                 }
-            },
+            }
             _ => {
-                self.column_number+=1;
+                self.column_number += 1;
             }
         }
-        self.offset+=1;
+        self.offset += 1;
         self.previous = c;
     }
 }
@@ -49,13 +50,15 @@ impl TokenLocation {
 pub struct Scanner<'a> {
     peekable: Peekable<Chars<'a>>,
     location: TokenLocation,
+    text: &'a str,
 }
 
 impl<'a> Scanner<'a> {
-    pub fn new(s:&'a str) -> Scanner<'a> {
+    pub fn new(text: &'a str) -> Scanner<'a> {
         Self {
-            peekable: s.chars().peekable(),
-            location : TokenLocation::new(),
+            peekable: text.chars().peekable(),
+            location: TokenLocation::new(),
+            text: text,
         }
     }
 
@@ -74,11 +77,14 @@ impl<'a> Scanner<'a> {
             Some(c) => {
                 self.location.next_char(c);
                 Some(c)
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
 }
 
 #[cfg(test)]
@@ -94,7 +100,7 @@ mod test {
             assert_eq!(c, text.chars().nth(s.location.offset).unwrap());
             s.next();
         }
-        assert_eq!(s.location.column_number, text.chars().count()+1);
+        assert_eq!(s.location.column_number, text.chars().count() + 1);
         assert_eq!(s.location.line_number, 1);
         assert_eq!(s.location.offset, text.chars().count());
     }
@@ -108,7 +114,7 @@ mod test {
             assert_eq!(c, text.chars().nth(s.location.offset).unwrap());
             s.next();
         }
-        assert_eq!(s.location.column_number, text.chars().count()+1);
+        assert_eq!(s.location.column_number, text.chars().count() + 1);
         assert_eq!(s.location.line_number, 1);
         assert_eq!(s.location.offset, text.chars().count());
     }
