@@ -99,19 +99,19 @@ impl Tokenizer {
         scanner.next(); // consume
         while let Some(c) = scanner.peek() {
             match c {
-                '\'' => {
+                '\'' => { // may end string but may escape
                     scanner.next();
                     if let Some(n) = scanner.peek() {
                         match n {
-                            '\'' => {
+                            '\'' => { // escape
                                 // escape
                                 text.push('\'');
                                 scanner.next();
                             }
-                            ';' | '=' | '>' | '<' | ',' | '.' => {
+                            ';' | '=' | '>' | '<' | ',' | '.' => { // end string
                                 break;
                             }
-                            ' ' | '\r' | '\n' => {
+                            ' ' | '\r' | '\n' => { // end and consume
                                 scanner.next();
                                 break;
                             }
@@ -124,7 +124,7 @@ impl Tokenizer {
                         }
                     }
                 }
-                '\r' | '\n' => {
+                '\r' | '\n' => { // newline in string reading
                     return self.make_error(
                         format_args!("unexpected newline in string literal"),
                         scanner,
