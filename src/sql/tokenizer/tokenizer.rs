@@ -1,7 +1,5 @@
 use std::{collections::HashMap, fmt::Arguments};
 
-use strum::{EnumCount, IntoEnumIterator};
-
 use super::{
     error::TokenizeError,
     token::{Keyword, ParsedToken, ParsedTokens, Token},
@@ -15,9 +13,9 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new() -> Self {
-        let mut key_words: HashMap<String, Keyword> = HashMap::with_capacity(Keyword::COUNT);
-        Keyword::iter().for_each(|kw| {
-            key_words.insert(kw.to_string(), kw);
+        let mut key_words: HashMap<String, Keyword> = HashMap::new();
+        Keyword::all().iter().for_each(|kw| {
+            key_words.insert(kw.to_string(), *kw);
         });
         Self { key_words }
     }

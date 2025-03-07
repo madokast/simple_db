@@ -9,9 +9,6 @@ use super::str_scanner::TokenLocation;
     PartialEq,
     Eq,
     Hash,
-    strum_macros::Display,
-    strum_macros::EnumCount,
-    strum_macros::EnumIter,
 )]
 pub enum Keyword {
     SELECT,
@@ -29,6 +26,52 @@ pub enum Keyword {
     TABLE,
     IS,
     NULL,
+}
+
+use Keyword::*;
+
+impl Keyword {
+    pub fn all() -> Vec<Keyword> {
+        vec![
+            SELECT,
+            FROM,
+            WHERE,
+            GROUP,
+            BY,
+            ORDER,
+            LIMIT,
+            OFFSET,
+            AS,
+            DESC,
+            ASC,
+            CREATE,
+            TABLE,
+            IS,
+            NULL,
+        ]
+    }
+}
+
+impl Display for Keyword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Keyword::SELECT => write!(f, "SELECT"),
+            Keyword::FROM => write!(f, "FROM"),
+            Keyword::WHERE => write!(f, "WHERE"),
+            Keyword::GROUP => write!(f, "GROUP"),
+            Keyword::BY => write!(f, "BY"),
+            Keyword::ORDER => write!(f, "ORDER"),
+            Keyword::LIMIT => write!(f, "LIMIT"),
+            Keyword::OFFSET => write!(f, "OFFSET"),
+            Keyword::AS => write!(f, "AS"),
+            Keyword::DESC => write!(f, "DESC"),
+            Keyword::ASC => write!(f, "ASC"),
+            Keyword::CREATE => write!(f, "CREATE"),
+            Keyword::TABLE => write!(f, "TABLE"),
+            Keyword::IS => write!(f, "IS"),
+            Keyword::NULL => write!(f, "NULL"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -85,7 +128,7 @@ impl Display for Token {
 
 #[derive(Debug)]
 pub struct ParsedTokens {
-    tokens: Vec<ParsedToken>,
+    pub tokens: Vec<ParsedToken>,
     pub raw_sql: String,
 }
 
