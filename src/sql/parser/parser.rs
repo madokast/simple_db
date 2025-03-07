@@ -106,8 +106,9 @@ impl<'a> Parser<'a> {
             Some(token) => match &token.token {
                 Token::Identifier(_) => Ok(SelectItem::Identifier(self.parse_identifier()?)),
                 Token::Multiply => {
+                    let w: SelectItem = SelectItem::Wildcard(Leaf::new(&self.location()));
                     self.next(); // consume *
-                    Ok(SelectItem::Wildcard(Leaf::new(&self.location())))
+                    Ok(w)
                 }
                 _ => self.make_error(format_args!("invalid token {token}")),
             },
@@ -342,4 +343,47 @@ mod test {
             }))
         )
     }
+
+    #[test]
+    fn select_many() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize(" SELECT    a, * ,  b.c ;  ").unwrap();
+        println!("{:#?}", tokens);
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![
+                        SelectItem::Identifier(Identifier::SingleIdentifier(
+                            SingleIdentifier {
+                                value: "a".into(),
+                                leaf: Leaf::new(&tokens.tokens[1].location),
+                            }
+                        )),
+                        SelectItem::Wildcard(Leaf::new(&tokens.tokens[3].location)),
+                        SelectItem::Identifier(Identifier::CombinedIdentifier(
+                            vec![
+                                SingleIdentifier {
+                                    value: "b".into(),
+                                    leaf: Leaf::new(&tokens.tokens[5].location),
+                                },
+                                SingleIdentifier {
+                                    value: "c".into(),
+                                    leaf: Leaf::new(&tokens.tokens[7].location),
+                                },
+                            ].into_boxed_slice()
+                        ))
+                    ].into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
 }
