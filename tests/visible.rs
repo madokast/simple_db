@@ -1,5 +1,5 @@
+use simple_db::sql::parser::ast::{Select, Statement};
 use simple_db::sql::tokenizer::token;
-use simple_db::sql::parser::ast::{Statement, Select};
 
 #[test]
 fn access_keyword() {
@@ -12,7 +12,7 @@ fn access_keyword() {
 #[test]
 fn access_query() {
     let _s = Statement::Select(Box::new(Select {
-        items:vec![],
+        items: vec![],
         from: vec![],
         wheres: None,
         order_by: vec![],

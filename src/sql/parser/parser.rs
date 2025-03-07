@@ -1,6 +1,12 @@
-use crate::sql::tokenizer::{str_scanner::TokenLocation, token::{Keyword, ParsedToken, ParsedTokens, Token}};
+use crate::sql::tokenizer::{
+    str_scanner::TokenLocation,
+    token::{Keyword, ParsedToken, ParsedTokens, Token},
+};
 
-use super::{ast::{leaf::Leaf, Statement, Statements}, error::ParseError};
+use super::{
+    ast::{leaf::Leaf, Statement, Statements},
+    error::ParseError,
+};
 
 pub struct Parser {
     tokens: Vec<ParsedToken>,
@@ -20,8 +26,7 @@ impl Parser {
     pub fn parse(mut self) -> Result<Statements, ParseError> {
         let mut statements: Vec<Statement> = Vec::new();
         while self.index < self.tokens.len() {
-            let statement: Statement = self.parse_statement()?;
-            statements.push(statement);
+            statements.push(self.parse_statement()?);
         }
         Ok(Statements {
             statements,
@@ -72,10 +77,9 @@ impl Parser {
         if self.index < len {
             &self.tokens[self.index].location
         } else {
-            &self.tokens[len-1].location
+            &self.tokens[len - 1].location
         }
     }
-
 }
 
 #[cfg(test)]
@@ -91,8 +95,9 @@ mod test {
         let parser: Parser = Parser::new(tokens.clone());
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
-        assert_eq!(statements.statements[0], Statement::Empty(
-            Leaf::new(&tokens.tokens[0].location)
-        ));
+        assert_eq!(
+            statements.statements[0],
+            Statement::Empty(Leaf::new(&tokens.tokens[0].location))
+        );
     }
 }

@@ -2,14 +2,7 @@ use std::fmt::Display;
 
 use super::str_scanner::TokenLocation;
 
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Keyword {
     SELECT,
     FROM,
@@ -33,20 +26,7 @@ use Keyword::*;
 impl Keyword {
     pub fn all() -> Vec<Keyword> {
         vec![
-            SELECT,
-            FROM,
-            WHERE,
-            GROUP,
-            BY,
-            ORDER,
-            LIMIT,
-            OFFSET,
-            AS,
-            DESC,
-            ASC,
-            CREATE,
-            TABLE,
-            IS,
+            SELECT, FROM, WHERE, GROUP, BY, ORDER, LIMIT, OFFSET, AS, DESC, ASC, CREATE, TABLE, IS,
             NULL,
         ]
     }

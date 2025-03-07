@@ -1,5 +1,5 @@
-use super::leaf::Leaf;
 use super::identifier::Identifier;
+use super::leaf::Leaf;
 use super::literal::Literal;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -15,9 +15,9 @@ pub struct Select {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectItem {
-    Wildcard(Leaf), // *
+    Wildcard(Leaf),         // *
     Identifier(Identifier), // col1
-    Literal(Literal), // "123" 123 12.3
+    Literal(Literal),       // "123" 123 12.3
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -82,8 +82,3 @@ pub enum UnaryOperator {
     Minus(Leaf),
     NOT(Leaf),
 }
-
-
-
-
-

@@ -9,7 +9,7 @@ pub struct Leaf {
 }
 
 impl Leaf {
-    pub fn new(location: &TokenLocation) ->Self {
+    pub fn new(location: &TokenLocation) -> Self {
         Self {
             line_number: location.line_number,
             column_number: location.column_number,

@@ -97,19 +97,23 @@ impl Tokenizer {
         scanner.next(); // consume
         while let Some(c) = scanner.peek() {
             match c {
-                '\'' => { // may end string but may escape
+                '\'' => {
+                    // may end string but may escape
                     scanner.next();
                     if let Some(n) = scanner.peek() {
                         match n {
-                            '\'' => { // escape
+                            '\'' => {
+                                // escape
                                 // escape
                                 text.push('\'');
                                 scanner.next();
                             }
-                            ';' | '=' | '>' | '<' | ',' | '.' => { // end string
+                            ';' | '=' | '>' | '<' | ',' | '.' => {
+                                // end string
                                 break;
                             }
-                            ' ' | '\r' | '\n' => { // end and consume
+                            ' ' | '\r' | '\n' => {
+                                // end and consume
                                 scanner.next();
                                 break;
                             }
@@ -122,7 +126,8 @@ impl Tokenizer {
                         }
                     }
                 }
-                '\r' | '\n' => { // newline in string reading
+                '\r' | '\n' => {
+                    // newline in string reading
                     return self.make_error(
                         format_args!("unexpected newline in string literal"),
                         scanner,
@@ -553,7 +558,9 @@ mod test {
 
     #[test]
     fn select_abc_from_def_where() {
-        let tokens = Tokenizer::new().tokenize("SELECT abc, kk, 1 from dEf where cc > 12;").unwrap();
+        let tokens = Tokenizer::new()
+            .tokenize("SELECT abc, kk, 1 from dEf where cc > 12;")
+            .unwrap();
         println!("[{}]", tokens);
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
