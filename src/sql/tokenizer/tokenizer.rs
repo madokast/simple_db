@@ -312,13 +312,13 @@ impl Tokenizer {
         }
 
         let token: Token = if word.len() > self.ley_word_max_length {
-            Token::Identifier(word)
+            Token::Identifier(word.as_str().into())
         } else {
             let upper: String = word.to_ascii_uppercase();
             if let Some(kw) = self.key_words.get(upper.as_str()) {
                 Token::Keyword(*kw)
             } else {
-                Token::Identifier(word)
+                Token::Identifier(word.as_str().into())
             }
         };
 
@@ -532,9 +532,9 @@ mod test {
             tokens,
             vec![
                 Token::Keyword(Keyword::SELECT),
-                Token::Identifier("abc".to_string()),
+                Token::Identifier("abc".into()),
                 Token::Keyword(Keyword::FROM),
-                Token::Identifier("dEf".to_string()),
+                Token::Identifier("dEf".into()),
                 Token::Semicolon,
             ],
         );
@@ -573,15 +573,15 @@ mod test {
             tokens,
             vec![
                 Token::Keyword(Keyword::SELECT),
-                Token::Identifier("abc".to_string()),
+                Token::Identifier("abc".into()),
                 Token::Comma,
-                Token::Identifier("kk".to_string()),
+                Token::Identifier("kk".into()),
                 Token::Comma,
                 Token::IntegerLiteral(0, Some(1)),
                 Token::Keyword(Keyword::FROM),
-                Token::Identifier("dEf".to_string()),
+                Token::Identifier("dEf".into()),
                 Token::Keyword(Keyword::WHERE),
-                Token::Identifier("cc".to_string()),
+                Token::Identifier("cc".into()),
                 Token::GreaterThan,
                 Token::IntegerLiteral(0, Some(12)),
                 Token::Semicolon,

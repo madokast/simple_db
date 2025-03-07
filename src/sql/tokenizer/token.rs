@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, sync::LazyLock};
+use std::{collections::HashMap, fmt::Display, rc::Rc, sync::LazyLock};
 
 use super::str_scanner::TokenLocation;
 
@@ -84,7 +84,7 @@ impl Display for Keyword {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Token {
     Keyword(Keyword),
-    Identifier(String), // 表名、列名
+    Identifier(Rc<str>), // 表名、列名
     StringLiteral(String),
     IntegerLiteral(u16, Option<u64>), // 前导零数目 + 数字
     Equal,                            // =
@@ -197,6 +197,12 @@ impl ParsedToken {
     }
 }
 
+impl Display for ParsedToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.token)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::sql::tokenizer::token::Keyword;
@@ -210,10 +216,7 @@ mod test {
 
     #[test]
     fn token_display_id() {
-        assert_eq!(
-            format!("{}", Token::Identifier("abc123".to_string())),
-            "abc123"
-        );
+        assert_eq!(format!("{}", Token::Identifier("abc123".into())), "abc123");
     }
 
     #[test]

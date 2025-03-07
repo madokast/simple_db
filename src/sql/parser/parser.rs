@@ -1,36 +1,46 @@
-use crate::sql::tokenizer::{
-    str_scanner::TokenLocation,
-    token::{Keyword, ParsedToken, ParsedTokens, Token},
+use std::fmt::Arguments;
+
+use crate::sql::{
+    parser::ast::Select,
+    tokenizer::{
+        str_scanner::TokenLocation,
+        token::{Keyword, ParsedToken, ParsedTokens, Token},
+    },
 };
 
 use super::{
-    ast::{leaf::Leaf, Statement, Statements},
+    ast::{
+        identifier::{Identifier, SingleIdentifier},
+        leaf::Leaf,
+        select::SelectItem,
+        Statement, Statements,
+    },
     error::ParseError,
 };
 
-pub struct Parser {
-    tokens: Box<[ParsedToken]>,
+pub struct Parser<'a> {
+    tokens: &'a [ParsedToken],
     index: usize,
-    raw_sql: Box<str>,
+    raw_sql: &'a str,
 }
 
-impl Parser {
-    pub fn new(tokens: ParsedTokens) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: &'a ParsedTokens) -> Self {
         Self {
-            tokens: tokens.tokens,
-            raw_sql: tokens.raw_sql,
+            tokens: tokens.tokens.as_ref(),
+            raw_sql: tokens.raw_sql.as_ref(),
             index: 0,
         }
     }
 
-    pub fn parse(mut self) -> Result<Statements, ParseError> {
+    pub fn parse(&mut self) -> Result<Statements, ParseError> {
         let mut statements: Vec<Statement> = Vec::new();
         while self.index < self.tokens.len() {
             statements.push(self.parse_statement()?);
         }
         Ok(Statements {
             statements: statements.into_boxed_slice(),
-            raw_sql: self.raw_sql,
+            raw_sql: self.raw_sql.into(),
         })
     }
 
@@ -49,11 +59,113 @@ impl Parser {
     fn parse_select(&mut self) -> Result<Statement, ParseError> {
         assert_eq!(self.peek().unwrap().token, Token::Keyword(Keyword::SELECT));
         self.next(); // consume SELECT
-        Err(ParseError::new(
-            "invalid select statement",
-            self.location().clone(),
-            self.raw_sql.as_ref(),
-        ))
+
+        let select_items: Box<[SelectItem]> = self.parse_select_items()?;
+
+        // consume Semicolon ; if exists
+        self.next_if(|t| *t == Token::Semicolon);
+
+        Ok(Statement::Select(Box::new(Select {
+            items: select_items,
+            from: vec![].into_boxed_slice(),
+            wheres: None,
+            order_by: vec![].into_boxed_slice(),
+            group_by: vec![].into_boxed_slice(),
+            limit: None,
+            offset: None,
+        })))
+    }
+
+    fn parse_select_items(&mut self) -> Result<Box<[SelectItem]>, ParseError> {
+        let mut items: Vec<SelectItem> = Vec::new();
+        loop {
+            items.push(self.parse_select_item()?);
+            match self.peek() {
+                Some(token) => {
+                    match token.token {
+                        Token::Comma => self.next(), // consume
+                        Token::Semicolon => break,
+                        Token::Keyword(kw) => match kw {
+                            Keyword::FROM | Keyword::WHERE => break,
+                            _ => {
+                                return self
+                                    .make_error(format_args!("invalid keyword {kw}, expect FROM"))
+                            }
+                        },
+                        _ => return self.make_error(format_args!("invalid token {token}")),
+                    }
+                }
+                None => break,
+            }
+        }
+        Ok(items.into_boxed_slice())
+    }
+
+    fn parse_select_item(&mut self) -> Result<SelectItem, ParseError> {
+        match self.peek() {
+            Some(token) => match &token.token {
+                Token::Identifier(_) => Ok(SelectItem::Identifier(self.parse_identifier()?)),
+                Token::Multiply => {
+                    self.next(); // consume *
+                    Ok(SelectItem::Wildcard(Leaf::new(&self.location())))
+                }
+                _ => self.make_error(format_args!("invalid token {token}")),
+            },
+            None => self.make_error(format_args!("unexpected end of input, expect select-item")),
+        }
+    }
+
+    /// parse identifier like single col_name or combined tab_name.col_name
+    /// TODO handle identifier with wildcard schema.table.*
+    fn parse_identifier(&mut self) -> Result<Identifier, ParseError> {
+        match self.peek() {
+            Some(token) => match &token.token {
+                Token::Identifier(ident) => {
+                    let mut identifiers: Vec<SingleIdentifier> = vec![SingleIdentifier {
+                        value: ident.clone(),
+                        leaf: Leaf::new(&token.location),
+                    }];
+                    self.next(); // consume identifier
+                    while let Some(token) = self.peek() {
+                        if token.token == Token::Period {
+                            self.next(); // consume.
+                            match self.peek() {
+                                Some(token) => match &token.token {
+                                    Token::Identifier(ident) => {
+                                        identifiers.push(SingleIdentifier {
+                                            value: ident.clone(),
+                                            leaf: Leaf::new(&token.location),
+                                        });
+                                        self.next(); // consume identifier
+                                    }
+                                    _ => {
+                                        return self.make_error(format_args!(
+                                            "invalid token {token}, expect identifier"
+                                        ))
+                                    }
+                                },
+                                None => {
+                                    return self.make_error(format_args!(
+                                        "unexpected end of input, expect identifier"
+                                    ))
+                                }
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    if identifiers.len() == 1 {
+                        Ok(Identifier::SingleIdentifier(identifiers.pop().unwrap()))
+                    } else {
+                        Ok(Identifier::CombinedIdentifier(
+                            identifiers.into_boxed_slice(),
+                        ))
+                    }
+                }
+                _ => self.make_error(format_args!("invalid token {token}")),
+            },
+            None => self.make_error(format_args!("unexpected end of input, expect identifier")),
+        }
     }
 
     fn parse_empty_statement(&mut self) -> Result<Statement, ParseError> {
@@ -64,6 +176,14 @@ impl Parser {
 
     fn peek(&self) -> Option<&ParsedToken> {
         self.tokens.get(self.index)
+    }
+
+    fn next_if(&mut self, predicate: impl FnOnce(&Token) -> bool) {
+        if let Some(token) = self.peek() {
+            if predicate(&token.token) {
+                self.next(); // consume
+            }
+        }
     }
 
     fn next(&mut self) {
@@ -80,6 +200,14 @@ impl Parser {
             &self.tokens[len - 1].location
         }
     }
+
+    fn make_error<T>(&self, format_args: Arguments) -> Result<T, ParseError> {
+        Err(ParseError::new(
+            &format_args.to_string(),
+            self.location().clone(),
+            self.raw_sql.as_ref(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -92,12 +220,126 @@ mod test {
     #[test]
     fn test_empty_statement() {
         let tokens: ParsedTokens = Tokenizer::new().tokenize(";").unwrap();
-        let parser: Parser = Parser::new(tokens.clone());
+        let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
             Statement::Empty(Leaf::new(&tokens.tokens[0].location))
         );
+    }
+
+    #[test]
+    fn select_a() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT a;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Identifier(Identifier::SingleIdentifier(
+                    SingleIdentifier {
+                        value: "a".into(),
+                        leaf: Leaf::new(&tokens.tokens[1].location),
+                    }
+                ))]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
+    #[test]
+    fn select_abc_abc_def() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT abcABCdef;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Identifier(Identifier::SingleIdentifier(
+                    SingleIdentifier {
+                        value: "abcABCdef".into(),
+                        leaf: Leaf::new(&tokens.tokens[1].location),
+                    }
+                ))]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
+    #[test]
+    fn select_wildcard() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT *").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Wildcard(Leaf::new(&tokens.tokens[1].location))]
+                    .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
+    #[test]
+    fn select_abc_abc_def_dot() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT abc.ABC.def;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Identifier(Identifier::CombinedIdentifier(
+                    vec![
+                        SingleIdentifier {
+                            value: "abc".into(),
+                            leaf: Leaf::new(&tokens.tokens[1].location),
+                        },
+                        SingleIdentifier {
+                            value: "ABC".into(),
+                            leaf: Leaf::new(&tokens.tokens[3].location),
+                        },
+                        SingleIdentifier {
+                            value: "def".into(),
+                            leaf: Leaf::new(&tokens.tokens[5].location),
+                        },
+                    ]
+                    .into_boxed_slice()
+                ))]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
     }
 }
