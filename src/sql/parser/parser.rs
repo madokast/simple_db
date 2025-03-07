@@ -1,6 +1,6 @@
-use crate::sql::tokenizer::{str_scanner::TokenLocation, token::{ParsedToken, ParsedTokens}};
+use crate::sql::tokenizer::{str_scanner::TokenLocation, token::{Keyword, ParsedToken, ParsedTokens, Token}};
 
-use super::{ast::{Statement, Statements}, error::ParseError};
+use super::{ast::{leaf::Leaf, Statement, Statements}, error::ParseError};
 
 pub struct Parser {
     tokens: Vec<ParsedToken>,
@@ -30,16 +30,31 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        match self.peek() {
-            _ => {
-                self.next();
-            }
+        match self.peek().unwrap().token {
+            Token::Keyword(Keyword::SELECT) => Ok(self.parse_select()?),
+            Token::Semicolon => self.parse_empty_statement(),
+            _ => Err(ParseError::new(
+                "invalid statement".to_string(),
+                self.location().clone(),
+                self.raw_sql.clone(),
+            )),
         }
+    }
+
+    fn parse_select(&mut self) -> Result<Statement, ParseError> {
+        assert_eq!(self.peek().unwrap().token, Token::Keyword(Keyword::SELECT));
+        self.next(); // consume SELECT
         Err(ParseError::new(
-            "Not implemented".to_string(),
-            *self.location(),
+            "invalid select statement".to_string(),
+            self.location().clone(),
             self.raw_sql.clone(),
         ))
+    }
+
+    fn parse_empty_statement(&mut self) -> Result<Statement, ParseError> {
+        assert_eq!(self.peek().unwrap().token, Token::Semicolon);
+        self.next(); // consume ;
+        Ok(Statement::Empty(Leaf::new(&self.location())))
     }
 
     fn peek(&self) -> Option<&ParsedToken> {
@@ -61,4 +76,23 @@ impl Parser {
         }
     }
 
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sql::tokenizer::tokenizer::Tokenizer;
+
+    use super::*;
+
+    /// test empty statement
+    #[test]
+    fn test_empty_statement() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize(";").unwrap();
+        let parser: Parser = Parser::new(tokens.clone());
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(statements.statements[0], Statement::Empty(
+            Leaf::new(&tokens.tokens[0].location)
+        ));
+    }
 }
