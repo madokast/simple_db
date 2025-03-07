@@ -21,8 +21,8 @@ impl Tokenizer {
     }
 
     /// tokenize the sql
-    pub fn tokenize<'a>(&self, sql: &'a str) -> Result<ParsedTokens, TokenizeError> {
-        let mut scanner: Scanner<'a> = Scanner::new(sql);
+    pub fn tokenize(&self, sql: &str) -> Result<ParsedTokens, TokenizeError> {
+        let mut scanner: Scanner<'_> = Scanner::new(sql);
         let mut tokens: Vec<ParsedToken> = vec![];
 
         // 循环获取下一个 token
@@ -167,7 +167,7 @@ impl Tokenizer {
         }
 
         Ok(Some(ParsedToken::new(
-            Token::StringLiteral(text),
+            Token::StringLiteral(text.into()),
             start_location,
         )))
     }
@@ -476,7 +476,7 @@ mod test {
             tokens,
             vec![
                 Token::Keyword(Keyword::SELECT),
-                Token::StringLiteral("hello".to_string()),
+                Token::StringLiteral("hello".into()),
                 Token::Semicolon,
             ],
         );
@@ -493,7 +493,7 @@ mod test {
             tokens,
             vec![
                 Token::Keyword(Keyword::SELECT),
-                Token::StringLiteral("'he'llo'".to_string()),
+                Token::StringLiteral("'he'llo'".into()),
                 Token::Semicolon,
             ],
         );
@@ -517,7 +517,7 @@ mod test {
             tokens,
             vec![
                 Token::Keyword(Keyword::SELECT),
-                Token::StringLiteral("'he\r\nllo'".to_string()),
+                Token::StringLiteral("'he\r\nllo'".into()),
                 Token::Semicolon,
             ],
         );

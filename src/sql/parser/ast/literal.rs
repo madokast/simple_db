@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::leaf::Leaf;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -8,7 +10,7 @@ pub struct Literal {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
-    String(String),
+    String(Rc<str>),
     Integer(u64),
     Float(f64),
 }

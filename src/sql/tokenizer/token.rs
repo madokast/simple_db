@@ -85,7 +85,7 @@ impl Display for Keyword {
 pub enum Token {
     Keyword(Keyword),
     Identifier(Rc<str>), // 表名、列名
-    StringLiteral(String),
+    StringLiteral(Rc<str>),
     IntegerLiteral(u16, Option<u64>), // 前导零数目 + 数字
     Equal,                            // =
     NotEqual,                         // <> or !=
