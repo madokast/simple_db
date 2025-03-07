@@ -4,17 +4,17 @@ use super::str_scanner::TokenLocation;
 
 #[derive(Debug)]
 pub struct TokenizeError {
-    message: String,
+    message: Box<str>,
     location: TokenLocation,
-    raw_sql: String,
+    raw_sql: Box<str>,
 }
 
 impl TokenizeError {
-    pub fn new(message: String, location: TokenLocation, raw_sql: String) -> Self {
+    pub fn new(message: &str, location: TokenLocation, raw_sql: &str) -> Self {
         Self {
-            message,
-            location,
-            raw_sql,
+            message: message.into(),
+            location: location,
+            raw_sql: raw_sql.into(),
         }
     }
 }
@@ -52,11 +52,8 @@ mod test {
         let mut loc = TokenLocation::new();
         "SELECT 1, ".chars().for_each(|c| loc.next_char(c));
 
-        let error: TokenizeError = TokenizeError::new(
-            "unknown char @".to_string(),
-            loc,
-            "SELECT 1, @a FROM stu WHERE a > 1;".to_string(),
-        );
+        let error: TokenizeError =
+            TokenizeError::new("unknown char @", loc, "SELECT 1, @a FROM stu WHERE a > 1;");
         println!("{}", error);
 
         assert_eq!(

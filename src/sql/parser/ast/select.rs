@@ -4,11 +4,11 @@ use super::literal::Literal;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Select {
-    pub items: Vec<SelectItem>,
-    pub from: Vec<Identifier>,
+    pub items: Box<[SelectItem]>,
+    pub from: Box<[Identifier]>,
     pub wheres: Option<Expression>,
-    pub group_by: Vec<Identifier>,
-    pub order_by: Vec<OrderBy>,
+    pub group_by: Box<[Identifier]>,
+    pub order_by: Box<[OrderBy]>,
     pub limit: Option<Limit>,
     pub offset: Option<Offset>,
 }

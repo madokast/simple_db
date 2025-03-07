@@ -4,17 +4,17 @@ use crate::sql::tokenizer::str_scanner::TokenLocation;
 
 #[derive(Debug)]
 pub struct ParseError {
-    message: String,
+    message: Box<str>,
     location: TokenLocation,
-    raw_sql: String,
+    raw_sql: Box<str>,
 }
 
 impl ParseError {
-    pub fn new(message: String, location: TokenLocation, raw_sql: String) -> Self {
+    pub fn new(message: &str, location: TokenLocation, raw_sql: &str) -> Self {
         Self {
-            message,
-            location,
-            raw_sql,
+            message: message.into(),
+            location: location,
+            raw_sql: raw_sql.into(),
         }
     }
 }

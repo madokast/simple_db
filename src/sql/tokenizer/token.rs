@@ -135,13 +135,16 @@ impl Display for Token {
 
 #[derive(Debug, Clone)]
 pub struct ParsedTokens {
-    pub tokens: Vec<ParsedToken>,
-    pub raw_sql: String,
+    pub tokens: Box<[ParsedToken]>,
+    pub raw_sql: Box<str>,
 }
 
 impl ParsedTokens {
-    pub fn new(tokens: Vec<ParsedToken>, raw_sql: String) -> Self {
-        Self { tokens, raw_sql }
+    pub fn new(tokens: Vec<ParsedToken>, raw_sql: &str) -> Self {
+        Self {
+            tokens: tokens.into_boxed_slice(),
+            raw_sql: raw_sql.into(),
+        }
     }
 
     pub fn tokens(&self) -> &[ParsedToken] {

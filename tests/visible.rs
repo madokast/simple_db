@@ -12,11 +12,11 @@ fn access_keyword() {
 #[test]
 fn access_query() {
     let _s = Statement::Select(Box::new(Select {
-        items: vec![],
-        from: vec![],
+        items: vec![].into_boxed_slice(),
+        from: vec![].into_boxed_slice(),
         wheres: None,
-        order_by: vec![],
-        group_by: vec![],
+        order_by: vec![].into_boxed_slice(),
+        group_by: vec![].into_boxed_slice(),
         limit: None,
         offset: None,
     }));

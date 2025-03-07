@@ -9,9 +9,9 @@ use super::{
 };
 
 pub struct Parser {
-    tokens: Vec<ParsedToken>,
+    tokens: Box<[ParsedToken]>,
     index: usize,
-    raw_sql: String,
+    raw_sql: Box<str>,
 }
 
 impl Parser {
@@ -29,7 +29,7 @@ impl Parser {
             statements.push(self.parse_statement()?);
         }
         Ok(Statements {
-            statements,
+            statements: statements.into_boxed_slice(),
             raw_sql: self.raw_sql,
         })
     }
@@ -39,9 +39,9 @@ impl Parser {
             Token::Keyword(Keyword::SELECT) => self.parse_select(),
             Token::Semicolon => self.parse_empty_statement(),
             _ => Err(ParseError::new(
-                "invalid statement".to_string(),
+                "invalid statement",
                 self.location().clone(),
-                self.raw_sql.clone(),
+                self.raw_sql.as_ref(),
             )),
         }
     }
@@ -50,9 +50,9 @@ impl Parser {
         assert_eq!(self.peek().unwrap().token, Token::Keyword(Keyword::SELECT));
         self.next(); // consume SELECT
         Err(ParseError::new(
-            "invalid select statement".to_string(),
+            "invalid select statement",
             self.location().clone(),
-            self.raw_sql.clone(),
+            self.raw_sql.as_ref(),
         ))
     }
 

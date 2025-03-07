@@ -36,7 +36,7 @@ impl Tokenizer {
             }
         }
 
-        return Ok(ParsedTokens::new(tokens, sql.to_string()));
+        return Ok(ParsedTokens::new(tokens, sql));
     }
 
     /// read next_token from scanner
@@ -342,9 +342,9 @@ impl Tokenizer {
         scanner: &Scanner<'_>,
     ) -> Result<Option<ParsedToken>, TokenizeError> {
         Err(TokenizeError::new(
-            format_args.to_string(),
+            &format_args.to_string(),
             scanner.location(),
-            scanner.text().to_string(),
+            scanner.text(),
         ))
     }
 }
