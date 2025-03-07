@@ -36,7 +36,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.peek().unwrap().token {
-            Token::Keyword(Keyword::SELECT) => Ok(self.parse_select()?),
+            Token::Keyword(Keyword::SELECT) => self.parse_select(),
             Token::Semicolon => self.parse_empty_statement(),
             _ => Err(ParseError::new(
                 "invalid statement".to_string(),
