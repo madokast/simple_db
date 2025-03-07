@@ -17,6 +17,18 @@ pub enum Keyword {
     SELECT,
     FROM,
     WHERE,
+    GROUP,
+    BY,
+    ORDER,
+    LIMIT,
+    OFFSET,
+    AS,
+    DESC,
+    ASC,
+    CREATE,
+    TABLE,
+    IS,
+    NULL,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
