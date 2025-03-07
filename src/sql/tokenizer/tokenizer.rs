@@ -8,16 +8,16 @@ use super::{
 use super::str_scanner::Scanner;
 
 pub struct Tokenizer {
-    key_words: HashMap<String, Keyword>,
+    key_words: &'static HashMap<&'static str, Keyword>,
+    ley_word_max_length: usize,
 }
 
 impl Tokenizer {
     pub fn new() -> Self {
-        let mut key_words: HashMap<String, Keyword> = HashMap::new();
-        Keyword::all().iter().for_each(|kw| {
-            key_words.insert(kw.to_string(), *kw);
-        });
-        Self { key_words }
+        Self {
+            key_words: Keyword::map(),
+            ley_word_max_length: Keyword::max_length(),
+        }
     }
 
     /// tokenize the sql
@@ -310,10 +310,16 @@ impl Tokenizer {
                 _ => break,
             }
         }
-        let token: Token = if let Some(kw) = self.key_words.get(&word.to_ascii_uppercase()) {
-            Token::Keyword(*kw)
-        } else {
+
+        let token: Token = if word.len() > self.ley_word_max_length {
             Token::Identifier(word)
+        } else {
+            let upper: String = word.to_ascii_uppercase();
+            if let Some(kw) = self.key_words.get(upper.as_str()) {
+                Token::Keyword(*kw)
+            } else {
+                Token::Identifier(word)
+            }
         };
 
         Ok(Some(ParsedToken::new(token, start_location)))

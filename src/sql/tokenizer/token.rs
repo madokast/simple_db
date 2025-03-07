@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display, sync::LazyLock};
 
 use super::str_scanner::TokenLocation;
 
@@ -19,38 +19,65 @@ pub enum Keyword {
     TABLE,
     IS,
     NULL,
-}
+} // 注意同步更新 ALL_KEY_WORDS
 
 use Keyword::*;
 
+const ALL_KEY_WORDS: [Keyword; 15] = [
+    SELECT, FROM, WHERE, GROUP, BY, ORDER, LIMIT, OFFSET, AS, DESC, ASC, CREATE, TABLE, IS, NULL,
+];
+
+static KEY_WORD_MAP: LazyLock<HashMap<&'static str, Keyword>> = LazyLock::new(|| {
+    let mut key_words: HashMap<&'static str, Keyword> = HashMap::new();
+    Keyword::all().iter().for_each(|kw| {
+        key_words.insert(kw.to_str(), *kw);
+    });
+    key_words
+});
+
 impl Keyword {
-    pub fn all() -> Vec<Keyword> {
-        vec![
-            SELECT, FROM, WHERE, GROUP, BY, ORDER, LIMIT, OFFSET, AS, DESC, ASC, CREATE, TABLE, IS,
-            NULL,
-        ]
+    pub fn all() -> &'static [Keyword] {
+        &ALL_KEY_WORDS
+    }
+
+    /// 获取关键字的映射，不应频繁调用
+    pub fn map() -> &'static HashMap<&'static str, Keyword> {
+        LazyLock::force(&KEY_WORD_MAP)
+    }
+
+    /// 获取关键字的最大长度，不应频繁调用
+    pub fn max_length() -> usize {
+        ALL_KEY_WORDS
+            .iter()
+            .map(|kw| kw.to_str().len())
+            .max()
+            .unwrap()
+    }
+
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            SELECT => "SELECT",
+            FROM => "FROM",
+            WHERE => "WHERE",
+            GROUP => "GROUP",
+            BY => "BY",
+            ORDER => "ORDER",
+            LIMIT => "LIMIT",
+            OFFSET => "OFFSET",
+            AS => "AS",
+            DESC => "DESC",
+            ASC => "ASC",
+            CREATE => "CREATE",
+            TABLE => "TABLE",
+            IS => "IS",
+            NULL => "NULL",
+        }
     }
 }
 
 impl Display for Keyword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Keyword::SELECT => write!(f, "SELECT"),
-            Keyword::FROM => write!(f, "FROM"),
-            Keyword::WHERE => write!(f, "WHERE"),
-            Keyword::GROUP => write!(f, "GROUP"),
-            Keyword::BY => write!(f, "BY"),
-            Keyword::ORDER => write!(f, "ORDER"),
-            Keyword::LIMIT => write!(f, "LIMIT"),
-            Keyword::OFFSET => write!(f, "OFFSET"),
-            Keyword::AS => write!(f, "AS"),
-            Keyword::DESC => write!(f, "DESC"),
-            Keyword::ASC => write!(f, "ASC"),
-            Keyword::CREATE => write!(f, "CREATE"),
-            Keyword::TABLE => write!(f, "TABLE"),
-            Keyword::IS => write!(f, "IS"),
-            Keyword::NULL => write!(f, "NULL"),
-        }
+        write!(f, "{}", self.to_str())
     }
 }
 
@@ -80,7 +107,7 @@ pub enum Token {
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Keyword(keyword) => write!(f, "{}", keyword),
+            Token::Keyword(keyword) => f.write_str(keyword.to_str()),
             Token::Identifier(ident) => write!(f, "{}", ident),
             Token::StringLiteral(s) => write!(f, "'{}'", s),
             Token::IntegerLiteral(zeros, num) => match num {
