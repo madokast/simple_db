@@ -126,7 +126,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParsedTokens {
     pub tokens: Vec<ParsedToken>,
     pub raw_sql: String,
@@ -175,7 +175,7 @@ impl Display for ParsedTokens {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParsedToken {
     pub token: Token,
     pub location: TokenLocation,
