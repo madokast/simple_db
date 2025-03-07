@@ -1,6 +1,6 @@
 use crate::sql::tokenizer::{str_scanner::TokenLocation, token::{ParsedToken, ParsedTokens}};
 
-use super::{ast::Statement, error::ParseError};
+use super::{ast::{Statement, Statements}, error::ParseError};
 
 pub struct Parser {
     tokens: Vec<ParsedToken>,
@@ -17,13 +17,16 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Statement>, ParseError> {
+    pub fn parse(mut self) -> Result<Statements, ParseError> {
         let mut statements: Vec<Statement> = Vec::new();
         while self.index < self.tokens.len() {
             let statement: Statement = self.parse_statement()?;
             statements.push(statement);
         }
-        Ok(statements)
+        Ok(Statements {
+            statements,
+            raw_sql: self.raw_sql,
+        })
     }
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
