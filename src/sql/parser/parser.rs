@@ -485,6 +485,33 @@ mod test {
             }))
         )
     }
+
+    #[test]
+    fn select_int() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 0, 00, 123, 001100;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Integer(0), leaf: Leaf::new(&tokens.tokens[1].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Integer(0), leaf: Leaf::new(&tokens.tokens[3].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Integer(123), leaf: Leaf::new(&tokens.tokens[5].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Integer(1100), leaf: Leaf::new(&tokens.tokens[7].location)})),
+                    ].into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
     #[test]
     fn select_float() {
         let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1.0, 1.25, 0.625, 3.0625").unwrap();
@@ -500,6 +527,33 @@ mod test {
                         SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(1.25), leaf: Leaf::new(&tokens.tokens[5].location)})),
                         SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(0.625), leaf: Leaf::new(&tokens.tokens[9].location)})),
                         SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(3.0625), leaf: Leaf::new(&tokens.tokens[13].location)})),
+                    ].into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
+    #[test]
+    fn select_int_int_float() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1.0, 1.25, 0.625, 3.0625, 123").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(1.0), leaf: Leaf::new(&tokens.tokens[1].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(1.25), leaf: Leaf::new(&tokens.tokens[5].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(0.625), leaf: Leaf::new(&tokens.tokens[9].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(3.0625), leaf: Leaf::new(&tokens.tokens[13].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Integer(123), leaf: Leaf::new(&tokens.tokens[17].location)})),
                     ].into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
