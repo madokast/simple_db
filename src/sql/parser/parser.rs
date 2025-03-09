@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
                                     leaf,
                                 })
                             }
-                            None => { // SELECT 1.0
+                            None => { // SELECT 1.000
                                 self.next(); // consume 0 fraction
                                 Ok(Literal {
                                     value: Value::Float(integer as f64),
@@ -171,12 +171,12 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    _ => Ok(Literal { // SELECT 1.
+                    _ => Ok(Literal { // SELECT 1. [FROM
                         value: Value::Integer(integer),
                         leaf,
                     }),
                 },
-                None => Ok(Literal { // SELECT 1.
+                None => Ok(Literal { // SELECT 1. [EOF
                     value: Value::Integer(integer),
                     leaf,
                 }),
