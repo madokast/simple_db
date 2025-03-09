@@ -10,7 +10,7 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub fn new(message: &str, location: TokenLocation, raw_sql: &str) -> Self {
+    pub fn new<Msg: Into<Box<str>>, SQL: Into<Box<str>>>(message: Msg, location: TokenLocation, raw_sql: SQL) -> Self {
         Self {
             message: message.into(),
             location: location,

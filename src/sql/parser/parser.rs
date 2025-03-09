@@ -1,4 +1,4 @@
-use std::fmt::Arguments;
+use std::{fmt::Arguments, rc::Rc};
 
 use crate::sql::{
     parser::ast::Select,
@@ -10,10 +10,7 @@ use crate::sql::{
 
 use super::{
     ast::{
-        identifier::{Identifier, SingleIdentifier},
-        leaf::Leaf,
-        select::{Expression, SelectItem},
-        Statement, Statements,
+        identifier::{Identifier, SingleIdentifier}, leaf::Leaf, literal::{Literal, Value}, select::{Expression, SelectItem}, Statement, Statements
     },
     error::ParseError,
 };
@@ -92,7 +89,7 @@ impl<'a> Parser<'a> {
                                     .make_error(format_args!("invalid keyword {kw}, expect FROM"))
                             }
                         },
-                        _ => return self.make_error(format_args!("invalid token {token}")),
+                        _ => return self.make_error(format_args!("invalid token {token}, expect keyword")),
                     }
                 }
                 None => break,
@@ -119,7 +116,40 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some(token) => match &token.token {
                 Token::Identifier(_) => Ok(Expression::Identifier(self.parse_identifier()?)),
-                _ => self.make_error(format_args!("invalid token {token}")),
+                Token::StringLiteral(s) => {
+                    let expr: Expression = Expression::Literal(Literal {value: Value::String(Rc::clone(&s)), leaf: Leaf::new(&token.location)});
+                    self.next(); // consume string literal
+                    Ok(expr)
+                },
+                Token::IntegerLiteral(_, number) => {
+                    let leaf: Leaf = Leaf::new(&token.location);
+                    let integer: u64 = number.unwrap_or(0);
+                    self.next(); // consume integer literal
+                    if self.next_if(|t| *t == Token::Period) {
+                        match self.peek() {
+                            Some(token) => match &token.token {
+                                Token::IntegerLiteral(zeros, number) => {
+                                    match number {
+                                        Some(fraction) => {
+                                            let number: f64 = self.parse_float(integer, *zeros, *fraction)?;
+                                            self.next(); // consume fraction
+                                            Ok(Expression::Literal(Literal {value: Value::Float(number), leaf}))
+                                        }
+                                        None => {
+                                            self.next(); // consume 0 fraction
+                                            Ok(Expression::Literal(Literal {value: Value::Float(integer as f64), leaf}))
+                                        }
+                                    }
+                                }
+                                _ => self.make_error(format_args!("invalid token {token}, expect fractional number")),
+                            },
+                            None => self.make_error(format_args!("unexpected end of input, expect fractional number")),
+                        }
+                    } else {
+                        Ok(Expression::Literal(Literal {value: Value::Integer(integer), leaf}))
+                    }
+                }
+                _ => self.make_error(format_args!("invalid token {token}, expect expression")),
             },
             None => self.make_error(format_args!("unexpected end of input, expect select-item")),
         }
@@ -172,10 +202,17 @@ impl<'a> Parser<'a> {
                         ))
                     }
                 }
-                _ => self.make_error(format_args!("invalid token {token}")),
+                _ => self.make_error(format_args!("invalid token {token}, expect identifier")),
             },
             None => self.make_error(format_args!("unexpected end of input, expect identifier")),
         }
+    }
+
+    fn parse_float(&self, integer:u64, zeros:u16, fraction:u64) -> Result<f64, ParseError> {
+        let s: String = format!("{integer}.{:0>width$}{fraction}", "", width = zeros as usize);
+        s.parse().map_err(|e: std::num::ParseFloatError| {
+            ParseError::new(e.to_string(), self.location().clone(), self.raw_sql.as_ref())
+        })
     }
 
     fn parse_empty_statement(&mut self) -> Result<Statement, ParseError> {
@@ -188,12 +225,14 @@ impl<'a> Parser<'a> {
         self.tokens.get(self.index)
     }
 
-    fn next_if(&mut self, predicate: impl FnOnce(&Token) -> bool) {
+    fn next_if(&mut self, predicate: impl FnOnce(&Token) -> bool) -> bool {
         if let Some(token) = self.peek() {
             if predicate(&token.token) {
                 self.next(); // consume
+                return true;
             }
         }
+        false
     }
 
     fn next(&mut self) {
@@ -213,7 +252,7 @@ impl<'a> Parser<'a> {
 
     fn make_error<T>(&self, format_args: Arguments) -> Result<T, ParseError> {
         Err(ParseError::new(
-            &format_args.to_string(),
+            format_args.to_string(),
             self.location().clone(),
             self.raw_sql.as_ref(),
         ))
@@ -391,6 +430,77 @@ mod test {
                     )))
                 ]
                 .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
+    #[test]
+    fn select_str() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 'hello'").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::Literal(Literal {value: Value::String("hello".into()), leaf: Leaf::new(&tokens.tokens[1].location)}))]
+                    .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+
+    #[test]
+    fn select_str2() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 'hello', 'world!\\n';").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![
+                    SelectItem::Expression(Expression::Literal(Literal {value: Value::String("hello".into()), leaf: Leaf::new(&tokens.tokens[1].location)})),
+                    SelectItem::Expression(Expression::Literal(Literal {value: Value::String("world!\n".into()), leaf: Leaf::new(&tokens.tokens[3].location)})),
+                ].into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        )
+    }
+    #[test]
+    fn select_float() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1.0, 1.25, 0.625, 3.0625").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        // println!("{:?}", statements);
+        assert_eq!(statements.statements.len(), 1);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(1.0), leaf: Leaf::new(&tokens.tokens[1].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(1.25), leaf: Leaf::new(&tokens.tokens[5].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(0.625), leaf: Leaf::new(&tokens.tokens[9].location)})),
+                        SelectItem::Expression(Expression::Literal(Literal {value: Value::Float(3.0625), leaf: Leaf::new(&tokens.tokens[13].location)})),
+                    ].into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
                 order_by: vec![].into_boxed_slice(),
