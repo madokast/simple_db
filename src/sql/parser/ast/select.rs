@@ -15,15 +15,14 @@ pub struct Select {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectItem {
-    Wildcard(Leaf),         // *
-    Identifier(Identifier), // col1
-    Literal(Literal),       // "123" 123 12.3
+    Wildcard(Leaf), // *
+    Expression(Expression),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
-    Literal(Literal),
-    Identifier(Identifier),
+    Literal(Literal),       // 123 "123"
+    Identifier(Identifier), // col1 tab1.col1
     BinaryExpression(BinaryExpression),
     UnaryExpression(UnaryExpression),
 }

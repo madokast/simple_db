@@ -12,7 +12,7 @@ use super::{
     ast::{
         identifier::{Identifier, SingleIdentifier},
         leaf::Leaf,
-        select::SelectItem,
+        select::{Expression, SelectItem},
         Statement, Statements,
     },
     error::ParseError,
@@ -104,12 +104,21 @@ impl<'a> Parser<'a> {
     fn parse_select_item(&mut self) -> Result<SelectItem, ParseError> {
         match self.peek() {
             Some(token) => match &token.token {
-                Token::Identifier(_) => Ok(SelectItem::Identifier(self.parse_identifier()?)),
                 Token::Multiply => {
                     let w: SelectItem = SelectItem::Wildcard(Leaf::new(&self.location()));
                     self.next(); // consume *
                     Ok(w)
                 }
+                _ => Ok(SelectItem::Expression(self.parse_expression()?)),
+            },
+            None => self.make_error(format_args!("unexpected end of input, expect select-item")),
+        }
+    }
+
+    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
+        match self.peek() {
+            Some(token) => match &token.token {
+                Token::Identifier(_) => Ok(Expression::Identifier(self.parse_identifier()?)),
                 _ => self.make_error(format_args!("invalid token {token}")),
             },
             None => self.make_error(format_args!("unexpected end of input, expect select-item")),
@@ -240,11 +249,11 @@ mod test {
         assert_eq!(
             statements.statements[0],
             Statement::Select(Box::new(Select {
-                items: vec![SelectItem::Identifier(Identifier::SingleIdentifier(
-                    SingleIdentifier {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::SingleIdentifier(SingleIdentifier {
                         value: "a".into(),
                         leaf: Leaf::new(&tokens.tokens[1].location),
-                    }
+                    })
                 ))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -267,11 +276,11 @@ mod test {
         assert_eq!(
             statements.statements[0],
             Statement::Select(Box::new(Select {
-                items: vec![SelectItem::Identifier(Identifier::SingleIdentifier(
-                    SingleIdentifier {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::SingleIdentifier(SingleIdentifier {
                         value: "abcABCdef".into(),
                         leaf: Leaf::new(&tokens.tokens[1].location),
-                    }
+                    })
                 ))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -316,22 +325,24 @@ mod test {
         assert_eq!(
             statements.statements[0],
             Statement::Select(Box::new(Select {
-                items: vec![SelectItem::Identifier(Identifier::CombinedIdentifier(
-                    vec![
-                        SingleIdentifier {
-                            value: "abc".into(),
-                            leaf: Leaf::new(&tokens.tokens[1].location),
-                        },
-                        SingleIdentifier {
-                            value: "ABC".into(),
-                            leaf: Leaf::new(&tokens.tokens[3].location),
-                        },
-                        SingleIdentifier {
-                            value: "def".into(),
-                            leaf: Leaf::new(&tokens.tokens[5].location),
-                        },
-                    ]
-                    .into_boxed_slice()
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::CombinedIdentifier(
+                        vec![
+                            SingleIdentifier {
+                                value: "abc".into(),
+                                leaf: Leaf::new(&tokens.tokens[1].location),
+                            },
+                            SingleIdentifier {
+                                value: "ABC".into(),
+                                leaf: Leaf::new(&tokens.tokens[3].location),
+                            },
+                            SingleIdentifier {
+                                value: "def".into(),
+                                leaf: Leaf::new(&tokens.tokens[5].location),
+                            },
+                        ]
+                        .into_boxed_slice()
+                    )
                 ))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -346,7 +357,9 @@ mod test {
 
     #[test]
     fn select_many() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize(" SELECT    a, * ,  b.c ;  ").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new()
+            .tokenize(" SELECT    a, * ,  b.c ;  ")
+            .unwrap();
         println!("{:#?}", tokens);
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -356,26 +369,28 @@ mod test {
             statements.statements[0],
             Statement::Select(Box::new(Select {
                 items: vec![
-                        SelectItem::Identifier(Identifier::SingleIdentifier(
+                    SelectItem::Expression(Expression::Identifier(Identifier::SingleIdentifier(
+                        SingleIdentifier {
+                            value: "a".into(),
+                            leaf: Leaf::new(&tokens.tokens[1].location),
+                        }
+                    ))),
+                    SelectItem::Wildcard(Leaf::new(&tokens.tokens[3].location)),
+                    SelectItem::Expression(Expression::Identifier(Identifier::CombinedIdentifier(
+                        vec![
                             SingleIdentifier {
-                                value: "a".into(),
-                                leaf: Leaf::new(&tokens.tokens[1].location),
-                            }
-                        )),
-                        SelectItem::Wildcard(Leaf::new(&tokens.tokens[3].location)),
-                        SelectItem::Identifier(Identifier::CombinedIdentifier(
-                            vec![
-                                SingleIdentifier {
-                                    value: "b".into(),
-                                    leaf: Leaf::new(&tokens.tokens[5].location),
-                                },
-                                SingleIdentifier {
-                                    value: "c".into(),
-                                    leaf: Leaf::new(&tokens.tokens[7].location),
-                                },
-                            ].into_boxed_slice()
-                        ))
-                    ].into_boxed_slice(),
+                                value: "b".into(),
+                                leaf: Leaf::new(&tokens.tokens[5].location),
+                            },
+                            SingleIdentifier {
+                                value: "c".into(),
+                                leaf: Leaf::new(&tokens.tokens[7].location),
+                            },
+                        ]
+                        .into_boxed_slice()
+                    )))
+                ]
+                .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
                 order_by: vec![].into_boxed_slice(),
@@ -385,5 +400,4 @@ mod test {
             }))
         )
     }
-
 }
