@@ -154,7 +154,7 @@ impl<'a> Parser<'a> {
                 Some(token) => match &token.token {
                     Token::IntegerLiteral(zeros, number) => {
                         match number {
-                            Some(fraction) => {
+                            Some(fraction) => { // SELECT 1.1
                                 let number: f64 = self.parse_float(integer, *zeros, *fraction)?;
                                 self.next(); // consume fraction
                                 Ok(Literal {
@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
                                     leaf,
                                 })
                             }
-                            None => {
+                            None => { // SELECT 1.0
                                 self.next(); // consume 0 fraction
                                 Ok(Literal {
                                     value: Value::Float(integer as f64),
@@ -171,15 +171,17 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    _ => self.make_error(format_args!(
-                        "invalid token {token}, expect fractional number"
-                    )),
+                    _ => Ok(Literal { // SELECT 1.
+                        value: Value::Integer(integer),
+                        leaf,
+                    }),
                 },
-                None => self.make_error(format_args!(
-                    "unexpected end of input, expect fractional number"
-                )),
+                None => Ok(Literal { // SELECT 1.
+                    value: Value::Integer(integer),
+                    leaf,
+                }),
             }
-        } else {
+        } else { // SELECT 1
             Ok(Literal {
                 value: Value::Integer(integer),
                 leaf,
