@@ -131,51 +131,59 @@ impl<'a> Parser<'a> {
                     self.next(); // consume string literal
                     Ok(expr)
                 }
-                Token::IntegerLiteral(_, number) => {
-                    let leaf: Leaf = Leaf::new(&token.location);
-                    let integer: u64 = number.unwrap_or(0);
-                    self.next(); // consume integer literal
-                    if self.next_if(|t| *t == Token::Period) {
-                        match self.peek() {
-                            Some(token) => match &token.token {
-                                Token::IntegerLiteral(zeros, number) => {
-                                    match number {
-                                        Some(fraction) => {
-                                            let number: f64 =
-                                                self.parse_float(integer, *zeros, *fraction)?;
-                                            self.next(); // consume fraction
-                                            Ok(Expression::Literal(Literal {
-                                                value: Value::Float(number),
-                                                leaf,
-                                            }))
-                                        }
-                                        None => {
-                                            self.next(); // consume 0 fraction
-                                            Ok(Expression::Literal(Literal {
-                                                value: Value::Float(integer as f64),
-                                                leaf,
-                                            }))
-                                        }
-                                    }
-                                }
-                                _ => self.make_error(format_args!(
-                                    "invalid token {token}, expect fractional number"
-                                )),
-                            },
-                            None => self.make_error(format_args!(
-                                "unexpected end of input, expect fractional number"
-                            )),
-                        }
-                    } else {
-                        Ok(Expression::Literal(Literal {
-                            value: Value::Integer(integer),
-                            leaf,
-                        }))
-                    }
+                Token::IntegerLiteral(zeros, number) => {
+                    Ok(Expression::Literal(self.parse_number(*zeros, *number)?))
                 }
                 _ => self.make_error(format_args!("invalid token {token}, expect expression")),
             },
             None => self.make_error(format_args!("unexpected end of input, expect select-item")),
+        }
+    }
+
+    fn parse_number(&mut self, _zeros: u16, number: Option<u64>) -> Result<Literal, ParseError> {
+        assert_eq!(
+            self.peek().unwrap().token,
+            Token::IntegerLiteral(_zeros, number)
+        );
+        let leaf: Leaf = Leaf::new(self.location());
+        self.next();
+
+        let integer: u64 = number.unwrap_or(0);
+        if self.next_if(|t| *t == Token::Period) {
+            match self.peek() {
+                Some(token) => match &token.token {
+                    Token::IntegerLiteral(zeros, number) => {
+                        match number {
+                            Some(fraction) => {
+                                let number: f64 = self.parse_float(integer, *zeros, *fraction)?;
+                                self.next(); // consume fraction
+                                Ok(Literal {
+                                    value: Value::Float(number),
+                                    leaf,
+                                })
+                            }
+                            None => {
+                                self.next(); // consume 0 fraction
+                                Ok(Literal {
+                                    value: Value::Float(integer as f64),
+                                    leaf,
+                                })
+                            }
+                        }
+                    }
+                    _ => self.make_error(format_args!(
+                        "invalid token {token}, expect fractional number"
+                    )),
+                },
+                None => self.make_error(format_args!(
+                    "unexpected end of input, expect fractional number"
+                )),
+            }
+        } else {
+            Ok(Literal {
+                value: Value::Integer(integer),
+                leaf,
+            })
         }
     }
 
