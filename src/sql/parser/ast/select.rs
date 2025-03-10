@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::expression::Expression;
+use super::expression::{Alias, Expression};
 use super::identifier::Identifier;
 use super::leaf::Leaf;
 use super::literal::Literal;
@@ -8,7 +8,7 @@ use super::literal::Literal;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Select {
     pub items: Box<[SelectItem]>,
-    pub from: Box<[Identifier]>,
+    pub from: Box<[FromItem]>,
     pub wheres: Option<Expression>,
     pub group_by: Box<[Identifier]>,
     pub order_by: Box<[OrderBy]>,
@@ -69,6 +69,7 @@ impl Display for Select {
 pub enum SelectItem {
     Wildcard(Leaf), // *
     Expression(Expression),
+    Alias(Alias),
 }
 
 impl Display for SelectItem {
@@ -76,7 +77,24 @@ impl Display for SelectItem {
         match self {
             SelectItem::Wildcard(_) => write!(f, "*"),
             SelectItem::Expression(expression) => write!(f, "{}", expression),
+            SelectItem::Alias(a) => write!(f, "{}", a),
         }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FromItem {
+    pub identifier: Identifier,
+    pub alias: Option<Identifier>,
+}
+
+impl Display for FromItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.identifier)?;
+        if let Some(alias) = &self.alias {
+            write!(f, " AS {}", alias)?;
+        }
+        Ok(())
     }
 }
 

@@ -44,6 +44,18 @@ impl Display for Function {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Alias {
+    pub expression: Expression,
+    pub alias: Identifier,
+}
+
+impl Display for Alias {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} AS {}", self.expression, self.alias)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct BinaryExpression {
     pub left: Box<Expression>,
     pub right: Box<Expression>,

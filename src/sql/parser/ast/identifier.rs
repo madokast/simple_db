@@ -4,9 +4,9 @@ use super::leaf::Leaf;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Identifier {
-    SingleIdentifier(SingleIdentifier),
-    CombinedIdentifier(Box<[SingleIdentifier]>),
-    IdentifierWithWildcard(Box<[SingleIdentifier]>),
+    Single(SingleIdentifier),
+    Combined(Box<[SingleIdentifier]>),
+    WithWildcard(Box<[SingleIdentifier]>),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -18,8 +18,8 @@ pub struct SingleIdentifier {
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Identifier::SingleIdentifier(ident) => write!(f, "{}", ident.value),
-            Identifier::CombinedIdentifier(identifiers) => {
+            Identifier::Single(ident) => write!(f, "{}", ident.value),
+            Identifier::Combined(identifiers) => {
                 for (index, ident) in identifiers.iter().enumerate() {
                     if index > 0 {
                         write!(f, ".")?;
@@ -28,7 +28,7 @@ impl Display for Identifier {
                 }
                 Ok(())
             }
-            Identifier::IdentifierWithWildcard(identifiers) => {
+            Identifier::WithWildcard(identifiers) => {
                 for (index, ident) in identifiers.iter().enumerate() {
                     if index > 0 {
                         write!(f, ".")?;
