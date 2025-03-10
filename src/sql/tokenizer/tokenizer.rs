@@ -326,7 +326,7 @@ impl<'a> Tokenizer<'a> {
     /// create tokenize-error
     fn make_error(&self, format_args: Arguments<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
         Err(TokenizeError::new(
-            &format_args.to_string(),
+            format_args.to_string(),
             self.location(),
             self.sql,
         ))
