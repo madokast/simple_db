@@ -102,7 +102,11 @@ impl<'a> Parser<'a> {
                         Token::Comma => self.next(), // consume
                         Token::Semicolon => break,
                         Token::Keyword(kw) => match kw {
-                            Keyword::FROM | Keyword::WHERE | Keyword::HAVING | Keyword::GROUP | Keyword::ORDER => break,
+                            Keyword::FROM
+                            | Keyword::WHERE
+                            | Keyword::HAVING
+                            | Keyword::GROUP
+                            | Keyword::ORDER => break,
                             _ => {
                                 return self
                                     .make_error(format_args!("invalid keyword {kw}, expect FROM"))
@@ -218,7 +222,7 @@ impl<'a> Parser<'a> {
                             expression: expr,
                             alias,
                         }))
-                    },
+                    }
                     Token::Identifier(ident) => {
                         let alias: Identifier = Identifier::Single(SingleIdentifier {
                             value: ident.clone(),
@@ -232,8 +236,8 @@ impl<'a> Parser<'a> {
                     }
                     _ => Ok(SelectItem::Expression(expr)),
                 }
-            },
-            None => Ok(SelectItem::Expression(expr))
+            }
+            None => Ok(SelectItem::Expression(expr)),
         }
     }
 
@@ -326,7 +330,8 @@ impl<'a> Parser<'a> {
                     Ok(Expression::Literal(self.parse_number(*zeros, *number)?))
                 }
                 Token::Multiply => {
-                    let expr: Expression = Expression::Identifier(Identifier::Wildcard(Leaf::new(&token.location)));
+                    let expr: Expression =
+                        Expression::Identifier(Identifier::Wildcard(Leaf::new(&token.location)));
                     self.next(); // consume *
                     Ok(expr)
                 }
@@ -635,8 +640,10 @@ mod test {
         assert_eq!(
             statements.statements[0],
             Statement::Select(Box::new(Select {
-                items: vec![SelectItem::Expression(Expression::Identifier(Identifier::Wildcard(Leaf::new(&tokens.tokens[1].location))))]
-                    .into_boxed_slice(),
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::Wildcard(Leaf::new(&tokens.tokens[1].location))
+                ))]
+                .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
                 order_by: vec![].into_boxed_slice(),
@@ -709,7 +716,9 @@ mod test {
                             leaf: Leaf::new(&tokens.tokens[1].location),
                         }
                     ))),
-                    SelectItem::Expression(Expression::Identifier(Identifier::Wildcard(Leaf::new(&tokens.tokens[3].location)))),
+                    SelectItem::Expression(Expression::Identifier(Identifier::Wildcard(
+                        Leaf::new(&tokens.tokens[3].location)
+                    ))),
                     SelectItem::Expression(Expression::Identifier(Identifier::Combined(
                         vec![
                             SingleIdentifier {
@@ -1503,7 +1512,9 @@ mod test {
 
     #[test]
     fn test_having() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT count(*) a HAVING a>1;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new()
+            .tokenize("SELECT count(*) a HAVING a>1;")
+            .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1512,22 +1523,22 @@ mod test {
         assert_eq!(
             statements.statements[0],
             Statement::Select(Box::new(Select {
-                items: vec![SelectItem::Alias(
-                    Alias {
-                        expression: Expression::Function(Function { 
-                            name: Identifier::Single(SingleIdentifier {
-                                value: "count".into(),
-                                leaf: Leaf::new(&tokens.tokens[1].location)
-                            }),
-                            args: vec![Expression::Identifier(Identifier::Wildcard(Leaf::new(&tokens.tokens[3].location)))]
-                           .into_boxed_slice(),
+                items: vec![SelectItem::Alias(Alias {
+                    expression: Expression::Function(Function {
+                        name: Identifier::Single(SingleIdentifier {
+                            value: "count".into(),
+                            leaf: Leaf::new(&tokens.tokens[1].location)
                         }),
-                        alias: Identifier::Single(SingleIdentifier {
-                            value: "a".into(),
-                            leaf: Leaf::new(&tokens.tokens[5].location)
-                        })
-                    }
-                )]
+                        args: vec![Expression::Identifier(Identifier::Wildcard(Leaf::new(
+                            &tokens.tokens[3].location
+                        )))]
+                        .into_boxed_slice(),
+                    }),
+                    alias: Identifier::Single(SingleIdentifier {
+                        value: "a".into(),
+                        leaf: Leaf::new(&tokens.tokens[5].location)
+                    })
+                })]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
@@ -1551,5 +1562,4 @@ mod test {
             }))
         );
     }
-
 }

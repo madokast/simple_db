@@ -17,6 +17,7 @@ fn access_query() {
         wheres: None,
         order_by: vec![].into_boxed_slice(),
         group_by: vec![].into_boxed_slice(),
+        having: None,
         limit: None,
         offset: None,
     }));

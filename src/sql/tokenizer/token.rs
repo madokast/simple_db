@@ -29,7 +29,7 @@ use Keyword::*;
 
 const ALL_KEY_WORDS: [Keyword; 19] = [
     SELECT, FROM, WHERE, GROUP, BY, ORDER, LIMIT, OFFSET, AS, DESC, ASC, CREATE, TABLE, IS, NULL,
-    AND, OR, NOT, HAVING
+    AND, OR, NOT, HAVING,
 ];
 
 static KEY_WORD_MAP: LazyLock<HashMap<&'static str, Keyword>> = LazyLock::new(|| {

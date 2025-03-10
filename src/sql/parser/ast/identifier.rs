@@ -37,7 +37,7 @@ impl Display for Identifier {
                     write!(f, "{}", ident.value)?;
                 }
                 write!(f, ".*")
-            },
+            }
             Identifier::Wildcard(_) => write!(f, "*"),
         }
     }
