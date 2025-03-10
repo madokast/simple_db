@@ -2,6 +2,24 @@ use crate::sql::tokenizer::str_scanner::TokenLocation;
 
 pub trait WithLocation {
     fn location(&self) -> &Location;
+
+    fn locate(&self, raw_sql: &str) -> String {
+        let loc = self.location();
+        const SKIP_BACKWARD: usize = 16;
+        let skip: usize = {
+            if loc.offset > SKIP_BACKWARD {
+                loc.offset - SKIP_BACKWARD
+            } else {
+                0
+            }
+        };
+        let near: String = raw_sql
+            .chars()
+            .skip(skip)
+            .take(SKIP_BACKWARD * 2)
+            .collect();
+        format!("Ln {}, Col {} near \"{}\"", loc.line_number, loc.column_number, near)
+    }
 }
 // 位置信息
 #[derive(Debug, PartialEq, Eq, Clone)]

@@ -42,7 +42,7 @@ impl Display for TokenizeError {
             .take(SKIP_BACKWARD * 2)
             .collect();
         f.write_fmt(format_args!(
-            "error {} as Ln {}, Col {} near \"{}\"",
+            "error {} in Ln {}, Col {} near \"{}\"",
             self.message, self.location.line_number, self.location.column_number, near
         ))
     }
@@ -62,7 +62,7 @@ mod test {
 
         assert_eq!(
             format!("{}", error),
-            "error unknown char @ as Ln 1, Col 11 near \"SELECT 1, @a FROM stu WHERE a > \""
+            "error unknown char @ in Ln 1, Col 11 near \"SELECT 1, @a FROM stu WHERE a > \""
         );
     }
 }
