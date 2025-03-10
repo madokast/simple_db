@@ -1,14 +1,23 @@
 use crate::sql::tokenizer::str_scanner::TokenLocation;
 
-// 叶子节点附带信息
+pub trait WithLocation {
+    fn location(&self) -> &Location;
+}
+// 位置信息
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Leaf {
+pub struct Location {
     pub line_number: usize,
     pub column_number: usize,
     pub offset: usize,
 }
 
-impl Leaf {
+impl WithLocation for Location {
+    fn location(&self) -> &Location {
+        self
+    }
+}
+
+impl Location {
     pub fn new(location: &TokenLocation) -> Self {
         Self {
             line_number: location.line_number,

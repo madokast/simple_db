@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use super::expression::{Alias, Expression};
 use super::identifier::Identifier;
-use super::leaf::Leaf;
+use super::leaf::{Location, WithLocation};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Select {
@@ -14,6 +14,12 @@ pub struct Select {
     pub order_by: Box<[OrderBy]>,
     pub limit: Option<Limit>,
     pub offset: Option<Offset>,
+}
+
+impl WithLocation for Select  {
+    fn location(&self) -> &Location {
+        self.items[0].location()
+    }
 }
 
 impl Display for Select {
@@ -74,6 +80,15 @@ pub enum SelectItem {
     Alias(Alias),
 }
 
+impl WithLocation for SelectItem {
+    fn location(&self) -> &Location {
+        match self {
+            SelectItem::Expression(expression) => expression.location(),
+            SelectItem::Alias(a) => a.location(),
+        }
+    }
+}
+
 impl Display for SelectItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -87,6 +102,12 @@ impl Display for SelectItem {
 pub struct FromItem {
     pub expression: Expression,
     pub alias: Option<Identifier>,
+}
+
+impl WithLocation for FromItem {
+    fn location(&self) -> &Location {
+        self.expression.location()
+    }
 }
 
 impl Display for FromItem {
@@ -105,6 +126,12 @@ pub struct OrderBy {
     pub asc: bool,
 }
 
+impl WithLocation for OrderBy  {
+    fn location(&self) -> &Location {
+        self.identifier.location()
+    }
+}
+
 impl Display for OrderBy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.identifier)?;
@@ -119,7 +146,13 @@ impl Display for OrderBy {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Limit {
     pub limit: u64,
-    pub leaf: Leaf,
+    pub leaf: Location,
+}
+
+impl WithLocation for Limit {
+    fn location(&self) -> &Location {
+        &self.leaf
+    }
 }
 
 impl Display for Limit {
@@ -131,7 +164,13 @@ impl Display for Limit {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Offset {
     pub offset: u64,
-    pub leaf: Leaf,
+    pub leaf: Location,
+}
+
+impl WithLocation for Offset {
+    fn location(&self) -> &Location {
+        &self.leaf
+    }
 }
 
 impl Display for Offset {

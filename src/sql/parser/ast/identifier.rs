@@ -1,19 +1,36 @@
 use std::{fmt::Display, rc::Rc};
 
-use super::leaf::Leaf;
+use super::leaf::{Location, WithLocation};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Identifier {
     Single(SingleIdentifier),
     Combined(Box<[SingleIdentifier]>),
     WithWildcard(Box<[SingleIdentifier]>),
-    Wildcard(Leaf),
+    Wildcard(Location),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SingleIdentifier {
     pub value: Rc<str>,
-    pub leaf: Leaf,
+    pub leaf: Location,
+}
+
+impl WithLocation for SingleIdentifier {
+    fn location(&self) -> &Location {
+        &self.leaf
+    }
+}
+
+impl WithLocation for Identifier {
+    fn location(&self) -> &Location {
+        match self {
+            Identifier::Single(ident) => ident.location(),
+            Identifier::Combined(identifiers) => identifiers[0].location(),
+            Identifier::WithWildcard(identifiers) => identifiers[0].location(),
+            Identifier::Wildcard(location) => location,
+        }
+    }
 }
 
 impl Display for Identifier {

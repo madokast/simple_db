@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{identifier::Identifier, leaf::Leaf, literal::Literal, Select};
+use super::{identifier::Identifier, leaf::{Location, WithLocation}, literal::Literal, Select};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -10,6 +10,19 @@ pub enum Expression {
     UnaryExpression(UnaryExpression),   // -1
     Function(Function),                 // COUNT(*)
     SubQuery(Box<Select>),              // (SELECT * FROM tab1)
+}
+
+impl WithLocation for Expression {
+    fn location(&self) -> &Location {
+        match self {
+            Expression::Literal(literal) => literal.location(),
+            Expression::Identifier(identifier) => identifier.location(),
+            Expression::BinaryExpression(binary_expression) => binary_expression.location(),
+            Expression::UnaryExpression(unary_expression) => unary_expression.location(),
+            Expression::Function(function) => function.location(),
+            Expression::SubQuery(select) => select.location(),
+        }
+    }
 }
 
 impl Display for Expression {
@@ -29,6 +42,12 @@ impl Display for Expression {
 pub struct Function {
     pub name: Identifier,
     pub args: Box<[Expression]>,
+}
+
+impl WithLocation for Function {
+    fn location(&self) -> &Location {
+        self.name.location()
+    }
 }
 
 impl Display for Function {
@@ -51,6 +70,12 @@ pub struct Alias {
     pub alias: Identifier,
 }
 
+impl WithLocation for Alias {
+    fn location(&self) -> &Location {
+        self.expression.location()
+    }
+}
+
 impl Display for Alias {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} AS {}", self.expression, self.alias)
@@ -62,6 +87,12 @@ pub struct BinaryExpression {
     pub left: Box<Expression>,
     pub right: Box<Expression>,
     pub operator: BinaryOperator,
+}
+
+impl WithLocation for BinaryExpression {
+    fn location(&self) -> &Location {
+        self.left.location()
+    }
 }
 
 impl Display for BinaryExpression {
@@ -76,6 +107,12 @@ pub struct UnaryExpression {
     pub expression: Box<Expression>,
 }
 
+impl WithLocation for UnaryExpression {
+    fn location(&self) -> &Location {
+        self.operator.location()
+    }
+}
+
 impl Display for UnaryExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}", self.operator, self.expression)
@@ -84,18 +121,18 @@ impl Display for UnaryExpression {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum BinaryOperator {
-    Plus(Leaf),
-    Minus(Leaf),
-    Multiply(Leaf),
-    Divide(Leaf),
-    Equal(Leaf),
-    NotEqual(Leaf),
-    GreaterThan(Leaf),
-    LessThan(Leaf),
-    GreaterThanOrEqual(Leaf),
-    LessThanOrEqual(Leaf),
-    AND(Leaf),
-    OR(Leaf),
+    Plus(Location),
+    Minus(Location),
+    Multiply(Location),
+    Divide(Location),
+    Equal(Location),
+    NotEqual(Location),
+    GreaterThan(Location),
+    LessThan(Location),
+    GreaterThanOrEqual(Location),
+    LessThanOrEqual(Location),
+    AND(Location),
+    OR(Location),
 }
 
 impl BinaryOperator {
@@ -113,6 +150,25 @@ impl BinaryOperator {
             BinaryOperator::LessThanOrEqual(_) => 110,
             BinaryOperator::AND(_) => 15,
             BinaryOperator::OR(_) => 10,
+        }
+    }
+}
+
+impl WithLocation for BinaryOperator  {
+    fn location(&self) -> &Location {
+        match self {
+            BinaryOperator::Plus(location) => location,
+            BinaryOperator::Minus(location) => location,
+            BinaryOperator::Multiply(location) => location,
+            BinaryOperator::Divide(location) => location,
+            BinaryOperator::Equal(location) => location,
+            BinaryOperator::NotEqual(location) => location,
+            BinaryOperator::GreaterThan(location) => location,
+            BinaryOperator::LessThan(location) => location,
+            BinaryOperator::GreaterThanOrEqual(location) => location,
+            BinaryOperator::LessThanOrEqual(location) => location,
+            BinaryOperator::AND(location) => location,
+            BinaryOperator::OR(location) => location,
         }
     }
 }
@@ -138,9 +194,19 @@ impl Display for BinaryOperator {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UnaryOperator {
-    Plus(Leaf),
-    Minus(Leaf),
-    NOT(Leaf),
+    Plus(Location),
+    Minus(Location),
+    NOT(Location),
+}
+
+impl WithLocation for UnaryOperator {
+    fn location(&self) -> &Location {
+        match self {
+            UnaryOperator::Plus(location) => location,
+            UnaryOperator::Minus(location) => location,
+            UnaryOperator::NOT(location) => location,
+        }
+    }
 }
 
 impl Display for UnaryOperator {

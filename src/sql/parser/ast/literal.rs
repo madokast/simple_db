@@ -1,11 +1,17 @@
 use std::{fmt::Display, rc::Rc};
 
-use super::leaf::Leaf;
+use super::leaf::{Location, WithLocation};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Literal {
     pub value: Value,
-    pub leaf: Leaf,
+    pub leaf: Location,
+}
+
+impl WithLocation for Literal  {
+    fn location(&self) -> &Location {
+        &self.leaf
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

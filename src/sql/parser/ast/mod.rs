@@ -6,7 +6,7 @@ pub mod select;
 
 use std::fmt::Display;
 
-use leaf::Leaf;
+use leaf::{Location, WithLocation};
 pub use select::Select;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -19,7 +19,17 @@ pub struct Statements {
 pub enum Statement {
     Select(Select),
     CreateTable,
-    Empty(Leaf),
+    Empty(Location),
+}
+
+impl WithLocation for Statement {
+    fn location(&self) -> &Location {
+        match self {
+            Statement::Select(select) => select.location(),
+            Statement::CreateTable => todo!(),
+            Statement::Empty(location) => location,
+        }
+    }
 }
 
 impl Display for Statement {

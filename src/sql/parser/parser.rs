@@ -15,7 +15,7 @@ use super::{
             UnaryOperator,
         },
         identifier::{Identifier, SingleIdentifier},
-        leaf::Leaf,
+        leaf::Location,
         literal::{Literal, Value},
         select::{OrderBy, SelectItem},
         Statement, Statements,
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                     Token::Identifier(ident) => {
                         let alias: Identifier = Identifier::Single(SingleIdentifier {
                             value: ident.clone(),
-                            leaf: Leaf::new(&token.location),
+                            leaf: Location::new(&token.location),
                         });
                         self.next();
                         Ok(SelectItem::Alias(Alias {
@@ -282,13 +282,13 @@ impl<'a> Parser<'a> {
     fn parse_prefix_operator(&mut self) -> Result<Option<UnaryOperator>, ParseError> {
         match self.peek() {
             Some(token) => match token.token {
-                Token::Plus => Ok(Some(UnaryOperator::Plus(Leaf::new(
+                Token::Plus => Ok(Some(UnaryOperator::Plus(Location::new(
                     &self.location_and_next(),
                 )))),
-                Token::Minus => Ok(Some(UnaryOperator::Minus(Leaf::new(
+                Token::Minus => Ok(Some(UnaryOperator::Minus(Location::new(
                     &self.location_and_next(),
                 )))),
-                Token::Keyword(Keyword::NOT) => Ok(Some(UnaryOperator::NOT(Leaf::new(
+                Token::Keyword(Keyword::NOT) => Ok(Some(UnaryOperator::NOT(Location::new(
                     &self.location_and_next(),
                 )))),
                 _ => Ok(None),
@@ -324,7 +324,7 @@ impl<'a> Parser<'a> {
                 Token::StringLiteral(s) => {
                     let expr: Expression = Expression::Literal(Literal {
                         value: Value::String(Rc::clone(&s)),
-                        leaf: Leaf::new(&token.location),
+                        leaf: Location::new(&token.location),
                     });
                     self.next(); // consume string literal
                     Ok(expr)
@@ -334,7 +334,7 @@ impl<'a> Parser<'a> {
                 }
                 Token::Multiply => {
                     let expr: Expression =
-                        Expression::Identifier(Identifier::Wildcard(Leaf::new(&token.location)));
+                        Expression::Identifier(Identifier::Wildcard(Location::new(&token.location)));
                     self.next(); // consume *
                     Ok(expr)
                 }
@@ -361,27 +361,27 @@ impl<'a> Parser<'a> {
     fn peek_binary_operator(&mut self) -> Result<Option<BinaryOperator>, ParseError> {
         match self.peek() {
             Some(token) => match token.token {
-                Token::Plus => Ok(Some(BinaryOperator::Plus(Leaf::new(self.location())))),
-                Token::Minus => Ok(Some(BinaryOperator::Minus(Leaf::new(self.location())))),
-                Token::Multiply => Ok(Some(BinaryOperator::Multiply(Leaf::new(self.location())))),
-                Token::Divide => Ok(Some(BinaryOperator::Divide(Leaf::new(self.location())))),
-                Token::Equal => Ok(Some(BinaryOperator::Equal(Leaf::new(self.location())))),
-                Token::NotEqual => Ok(Some(BinaryOperator::NotEqual(Leaf::new(self.location())))),
-                Token::LessThan => Ok(Some(BinaryOperator::LessThan(Leaf::new(self.location())))),
-                Token::GreaterThan => Ok(Some(BinaryOperator::GreaterThan(Leaf::new(
+                Token::Plus => Ok(Some(BinaryOperator::Plus(Location::new(self.location())))),
+                Token::Minus => Ok(Some(BinaryOperator::Minus(Location::new(self.location())))),
+                Token::Multiply => Ok(Some(BinaryOperator::Multiply(Location::new(self.location())))),
+                Token::Divide => Ok(Some(BinaryOperator::Divide(Location::new(self.location())))),
+                Token::Equal => Ok(Some(BinaryOperator::Equal(Location::new(self.location())))),
+                Token::NotEqual => Ok(Some(BinaryOperator::NotEqual(Location::new(self.location())))),
+                Token::LessThan => Ok(Some(BinaryOperator::LessThan(Location::new(self.location())))),
+                Token::GreaterThan => Ok(Some(BinaryOperator::GreaterThan(Location::new(
                     self.location(),
                 )))),
-                Token::LessThanOrEqual => Ok(Some(BinaryOperator::LessThanOrEqual(Leaf::new(
+                Token::LessThanOrEqual => Ok(Some(BinaryOperator::LessThanOrEqual(Location::new(
                     self.location(),
                 )))),
                 Token::GreaterThanOrEqual => Ok(Some(BinaryOperator::GreaterThanOrEqual(
-                    Leaf::new(self.location()),
+                    Location::new(self.location()),
                 ))),
                 Token::Keyword(Keyword::AND) => {
-                    Ok(Some(BinaryOperator::AND(Leaf::new(self.location()))))
+                    Ok(Some(BinaryOperator::AND(Location::new(self.location()))))
                 }
                 Token::Keyword(Keyword::OR) => {
-                    Ok(Some(BinaryOperator::OR(Leaf::new(self.location()))))
+                    Ok(Some(BinaryOperator::OR(Location::new(self.location()))))
                 }
                 _ => Ok(None),
             },
@@ -394,7 +394,7 @@ impl<'a> Parser<'a> {
             self.peek().unwrap().token,
             Token::IntegerLiteral(_zeros, number)
         );
-        let leaf: Leaf = Leaf::new(self.location());
+        let leaf: Location = Location::new(self.location());
         self.next();
 
         let integer: u64 = number.unwrap_or(0);
@@ -451,7 +451,7 @@ impl<'a> Parser<'a> {
                 Token::Identifier(ident) => {
                     let mut identifiers: Vec<SingleIdentifier> = vec![SingleIdentifier {
                         value: ident.clone(),
-                        leaf: Leaf::new(&token.location),
+                        leaf: Location::new(&token.location),
                     }];
                     self.next(); // consume identifier
                     while let Some(token) = self.peek() {
@@ -462,7 +462,7 @@ impl<'a> Parser<'a> {
                                     Token::Identifier(ident) => {
                                         identifiers.push(SingleIdentifier {
                                             value: ident.clone(),
-                                            leaf: Leaf::new(&token.location),
+                                            leaf: Location::new(&token.location),
                                         });
                                         self.next(); // consume identifier
                                     }
@@ -512,7 +512,7 @@ impl<'a> Parser<'a> {
     fn parse_empty_statement(&mut self) -> Result<Statement, ParseError> {
         debug_assert_eq!(self.peek().unwrap().token, Token::Semicolon);
         self.next(); // consume ;
-        Ok(Statement::Empty(Leaf::new(&self.location())))
+        Ok(Statement::Empty(Location::new(&self.location())))
     }
 
     fn peek(&self) -> Option<&ParsedToken> {
@@ -573,7 +573,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Empty(Leaf::new(&tokens.tokens[0].location))
+            Statement::Empty(Location::new(&tokens.tokens[0].location))
         );
     }
 
@@ -590,7 +590,7 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location),
+                        leaf: Location::new(&tokens.tokens[1].location),
                     })
                 ))]
                 .into_boxed_slice(),
@@ -618,7 +618,7 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "abcABCdef".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location),
+                        leaf: Location::new(&tokens.tokens[1].location),
                     })
                 ))]
                 .into_boxed_slice(),
@@ -644,7 +644,7 @@ mod test {
             statements.statements[0],
             Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
-                    Identifier::Wildcard(Leaf::new(&tokens.tokens[1].location))
+                    Identifier::Wildcard(Location::new(&tokens.tokens[1].location))
                 ))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -673,15 +673,15 @@ mod test {
                         vec![
                             SingleIdentifier {
                                 value: "abc".into(),
-                                leaf: Leaf::new(&tokens.tokens[1].location),
+                                leaf: Location::new(&tokens.tokens[1].location),
                             },
                             SingleIdentifier {
                                 value: "ABC".into(),
-                                leaf: Leaf::new(&tokens.tokens[3].location),
+                                leaf: Location::new(&tokens.tokens[3].location),
                             },
                             SingleIdentifier {
                                 value: "def".into(),
-                                leaf: Leaf::new(&tokens.tokens[5].location),
+                                leaf: Location::new(&tokens.tokens[5].location),
                             },
                         ]
                         .into_boxed_slice()
@@ -716,21 +716,21 @@ mod test {
                     SelectItem::Expression(Expression::Identifier(Identifier::Single(
                         SingleIdentifier {
                             value: "a".into(),
-                            leaf: Leaf::new(&tokens.tokens[1].location),
+                            leaf: Location::new(&tokens.tokens[1].location),
                         }
                     ))),
                     SelectItem::Expression(Expression::Identifier(Identifier::Wildcard(
-                        Leaf::new(&tokens.tokens[3].location)
+                        Location::new(&tokens.tokens[3].location)
                     ))),
                     SelectItem::Expression(Expression::Identifier(Identifier::Combined(
                         vec![
                             SingleIdentifier {
                                 value: "b".into(),
-                                leaf: Leaf::new(&tokens.tokens[5].location),
+                                leaf: Location::new(&tokens.tokens[5].location),
                             },
                             SingleIdentifier {
                                 value: "c".into(),
-                                leaf: Leaf::new(&tokens.tokens[7].location),
+                                leaf: Location::new(&tokens.tokens[7].location),
                             },
                         ]
                         .into_boxed_slice()
@@ -760,7 +760,7 @@ mod test {
             Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Literal(Literal {
                     value: Value::String("hello".into()),
-                    leaf: Leaf::new(&tokens.tokens[1].location)
+                    leaf: Location::new(&tokens.tokens[1].location)
                 }))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -789,11 +789,11 @@ mod test {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::String("hello".into()),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::String("world!\n".into()),
-                        leaf: Leaf::new(&tokens.tokens[3].location)
+                        leaf: Location::new(&tokens.tokens[3].location)
                     })),
                 ]
                 .into_boxed_slice(),
@@ -823,19 +823,19 @@ mod test {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Integer(0),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Integer(0),
-                        leaf: Leaf::new(&tokens.tokens[3].location)
+                        leaf: Location::new(&tokens.tokens[3].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Integer(123),
-                        leaf: Leaf::new(&tokens.tokens[5].location)
+                        leaf: Location::new(&tokens.tokens[5].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Integer(1100),
-                        leaf: Leaf::new(&tokens.tokens[7].location)
+                        leaf: Location::new(&tokens.tokens[7].location)
                     })),
                 ]
                 .into_boxed_slice(),
@@ -865,19 +865,19 @@ mod test {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(1.0),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(1.25),
-                        leaf: Leaf::new(&tokens.tokens[5].location)
+                        leaf: Location::new(&tokens.tokens[5].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(0.625),
-                        leaf: Leaf::new(&tokens.tokens[9].location)
+                        leaf: Location::new(&tokens.tokens[9].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(3.0625),
-                        leaf: Leaf::new(&tokens.tokens[13].location)
+                        leaf: Location::new(&tokens.tokens[13].location)
                     })),
                 ]
                 .into_boxed_slice(),
@@ -907,23 +907,23 @@ mod test {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(1.0),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(1.25),
-                        leaf: Leaf::new(&tokens.tokens[5].location)
+                        leaf: Location::new(&tokens.tokens[5].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(0.625),
-                        leaf: Leaf::new(&tokens.tokens[9].location)
+                        leaf: Location::new(&tokens.tokens[9].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(3.0625),
-                        leaf: Leaf::new(&tokens.tokens[13].location)
+                        leaf: Location::new(&tokens.tokens[13].location)
                     })),
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Integer(123),
-                        leaf: Leaf::new(&tokens.tokens[17].location)
+                        leaf: Location::new(&tokens.tokens[17].location)
                     })),
                 ]
                 .into_boxed_slice(),
@@ -953,13 +953,13 @@ mod test {
                     BinaryExpression {
                         left: Box::new(Expression::Literal(Literal {
                             value: Value::Integer(1),
-                            leaf: Leaf::new(&tokens.tokens[1].location)
+                            leaf: Location::new(&tokens.tokens[1].location)
                         })),
                         right: Box::new(Expression::Literal(Literal {
                             value: Value::Integer(2),
-                            leaf: Leaf::new(&tokens.tokens[3].location)
+                            leaf: Location::new(&tokens.tokens[3].location)
                         })),
-                        operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[2].location)),
+                        operator: BinaryOperator::Plus(Location::new(&tokens.tokens[2].location)),
                     }
                 ))]
                 .into_boxed_slice(),
@@ -990,19 +990,19 @@ mod test {
                         left: Box::new(Expression::BinaryExpression(BinaryExpression {
                             left: Box::new(Expression::Literal(Literal {
                                 value: Value::Integer(1),
-                                leaf: Leaf::new(&tokens.tokens[1].location)
+                                leaf: Location::new(&tokens.tokens[1].location)
                             })),
                             right: Box::new(Expression::Literal(Literal {
                                 value: Value::Integer(2),
-                                leaf: Leaf::new(&tokens.tokens[3].location)
+                                leaf: Location::new(&tokens.tokens[3].location)
                             })),
-                            operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[2].location)),
+                            operator: BinaryOperator::Plus(Location::new(&tokens.tokens[2].location)),
                         })),
                         right: Box::new(Expression::Literal(Literal {
                             value: Value::Integer(3),
-                            leaf: Leaf::new(&tokens.tokens[5].location),
+                            leaf: Location::new(&tokens.tokens[5].location),
                         })),
-                        operator: BinaryOperator::Minus(Leaf::new(&tokens.tokens[4].location)),
+                        operator: BinaryOperator::Minus(Location::new(&tokens.tokens[4].location)),
                     }
                 ))]
                 .into_boxed_slice(),
@@ -1032,22 +1032,22 @@ mod test {
                     BinaryExpression {
                         left: Box::new(Expression::Literal(Literal {
                             value: Value::Integer(1),
-                            leaf: Leaf::new(&tokens.tokens[1].location)
+                            leaf: Location::new(&tokens.tokens[1].location)
                         })),
                         right: Box::new(Expression::BinaryExpression(BinaryExpression {
                             left: Box::new(Expression::Literal(Literal {
                                 value: Value::Integer(2),
-                                leaf: Leaf::new(&tokens.tokens[3].location)
+                                leaf: Location::new(&tokens.tokens[3].location)
                             })),
                             right: Box::new(Expression::Literal(Literal {
                                 value: Value::Integer(3),
-                                leaf: Leaf::new(&tokens.tokens[5].location)
+                                leaf: Location::new(&tokens.tokens[5].location)
                             })),
-                            operator: BinaryOperator::Multiply(Leaf::new(
+                            operator: BinaryOperator::Multiply(Location::new(
                                 &tokens.tokens[4].location
                             )),
                         })),
-                        operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[2].location)),
+                        operator: BinaryOperator::Plus(Location::new(&tokens.tokens[2].location)),
                     }
                 ))]
                 .into_boxed_slice(),
@@ -1075,7 +1075,7 @@ mod test {
             Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Literal(Literal {
                     value: Value::Integer(1),
-                    leaf: Leaf::new(&tokens.tokens[2].location)
+                    leaf: Location::new(&tokens.tokens[2].location)
                 }))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -1102,7 +1102,7 @@ mod test {
             Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Literal(Literal {
                     value: Value::Integer(1),
-                    leaf: Leaf::new(&tokens.tokens[3].location)
+                    leaf: Location::new(&tokens.tokens[3].location)
                 }))]
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
@@ -1131,20 +1131,20 @@ mod test {
                     BinaryExpression {
                         left: Box::new(Expression::Literal(Literal {
                             value: Value::Integer(2),
-                            leaf: Leaf::new(&tokens.tokens[1].location)
+                            leaf: Location::new(&tokens.tokens[1].location)
                         })),
                         right: Box::new(Expression::BinaryExpression(BinaryExpression {
                             left: Box::new(Expression::Literal(Literal {
                                 value: Value::Integer(3),
-                                leaf: Leaf::new(&tokens.tokens[4].location)
+                                leaf: Location::new(&tokens.tokens[4].location)
                             })),
                             right: Box::new(Expression::Literal(Literal {
                                 value: Value::Integer(4),
-                                leaf: Leaf::new(&tokens.tokens[6].location)
+                                leaf: Location::new(&tokens.tokens[6].location)
                             })),
-                            operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[5].location)),
+                            operator: BinaryOperator::Plus(Location::new(&tokens.tokens[5].location)),
                         })),
-                        operator: BinaryOperator::Multiply(Leaf::new(&tokens.tokens[2].location)),
+                        operator: BinaryOperator::Multiply(Location::new(&tokens.tokens[2].location)),
                     }
                 ))]
                 .into_boxed_slice(),
@@ -1173,7 +1173,7 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     }),
                     args: vec![].into_boxed_slice(),
                 }))]
@@ -1203,11 +1203,11 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     }),
                     args: vec![Expression::Literal(Literal {
                         value: Value::Integer(1),
-                        leaf: Leaf::new(&tokens.tokens[3].location)
+                        leaf: Location::new(&tokens.tokens[3].location)
                     })]
                     .into_boxed_slice(),
                 }))]
@@ -1237,22 +1237,22 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     }),
                     args: vec![
                         Expression::Literal(Literal {
                             value: Value::Integer(1),
-                            leaf: Leaf::new(&tokens.tokens[3].location)
+                            leaf: Location::new(&tokens.tokens[3].location)
                         }),
                         Expression::Identifier(Identifier::Combined(
                             vec![
                                 SingleIdentifier {
                                     value: "a".into(),
-                                    leaf: Leaf::new(&tokens.tokens[5].location)
+                                    leaf: Location::new(&tokens.tokens[5].location)
                                 },
                                 SingleIdentifier {
                                     value: "b".into(),
-                                    leaf: Leaf::new(&tokens.tokens[7].location)
+                                    leaf: Location::new(&tokens.tokens[7].location)
                                 },
                             ]
                             .into_boxed_slice()
@@ -1286,27 +1286,27 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     }),
                     args: vec![
                         Expression::Literal(Literal {
                             value: Value::Integer(1),
-                            leaf: Leaf::new(&tokens.tokens[3].location)
+                            leaf: Location::new(&tokens.tokens[3].location)
                         }),
                         Expression::BinaryExpression(BinaryExpression {
                             left: Box::new(Expression::Identifier(Identifier::Single(
                                 SingleIdentifier {
                                     value: "a".into(),
-                                    leaf: Leaf::new(&tokens.tokens[5].location)
+                                    leaf: Location::new(&tokens.tokens[5].location)
                                 }
                             ))),
                             right: Box::new(Expression::Identifier(Identifier::Single(
                                 SingleIdentifier {
                                     value: "b".into(),
-                                    leaf: Leaf::new(&tokens.tokens[7].location)
+                                    leaf: Location::new(&tokens.tokens[7].location)
                                 }
                             ))),
-                            operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[6].location)),
+                            operator: BinaryOperator::Plus(Location::new(&tokens.tokens[6].location)),
                         })
                     ]
                     .into_boxed_slice(),
@@ -1337,14 +1337,14 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })
                 ))]
                 .into_boxed_slice(),
                 from: vec![FromItem {
                     expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                         value: "b".into(),
-                        leaf: Leaf::new(&tokens.tokens[3].location)
+                        leaf: Location::new(&tokens.tokens[3].location)
                     })),
                     alias: None
                 }]
@@ -1375,7 +1375,7 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })
                 ))]
                 .into_boxed_slice(),
@@ -1383,18 +1383,18 @@ mod test {
                     FromItem {
                         expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                             value: "c".into(),
-                            leaf: Leaf::new(&tokens.tokens[3].location)
+                            leaf: Location::new(&tokens.tokens[3].location)
                         })),
                         alias: None
                     },
                     FromItem {
                         expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                             value: "d".into(),
-                            leaf: Leaf::new(&tokens.tokens[5].location)
+                            leaf: Location::new(&tokens.tokens[5].location)
                         })),
                         alias: Some(Identifier::Single(SingleIdentifier {
                             value: "e".into(),
-                            leaf: Leaf::new(&tokens.tokens[7].location)
+                            leaf: Location::new(&tokens.tokens[7].location)
                         }))
                     }
                 ]
@@ -1425,14 +1425,14 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })
                 ))]
                 .into_boxed_slice(),
                 from: vec![FromItem {
                     expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                         value: "b".into(),
-                        leaf: Leaf::new(&tokens.tokens[3].location)
+                        leaf: Location::new(&tokens.tokens[3].location)
                     })),
                     alias: None,
                 }]
@@ -1441,14 +1441,14 @@ mod test {
                     left: Box::new(Expression::Identifier(Identifier::Single(
                         SingleIdentifier {
                             value: "c".into(),
-                            leaf: Leaf::new(&tokens.tokens[5].location)
+                            leaf: Location::new(&tokens.tokens[5].location)
                         }
                     ))),
                     right: Box::new(Expression::Literal(Literal {
                         value: Value::Integer(1),
-                        leaf: Leaf::new(&tokens.tokens[7].location)
+                        leaf: Location::new(&tokens.tokens[7].location)
                     })),
-                    operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[6].location)),
+                    operator: BinaryOperator::GreaterThan(Location::new(&tokens.tokens[6].location)),
                 })),
                 order_by: vec![].into_boxed_slice(),
                 group_by: vec![].into_boxed_slice(),
@@ -1475,14 +1475,14 @@ mod test {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
-                        leaf: Leaf::new(&tokens.tokens[1].location)
+                        leaf: Location::new(&tokens.tokens[1].location)
                     })
                 ))]
                 .into_boxed_slice(),
                 from: vec![FromItem {
                     expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                         value: "b".into(),
-                        leaf: Leaf::new(&tokens.tokens[3].location)
+                        leaf: Location::new(&tokens.tokens[3].location)
                     })),
                     alias: None,
                 }]
@@ -1491,19 +1491,19 @@ mod test {
                     left: Box::new(Expression::Identifier(Identifier::Single(
                         SingleIdentifier {
                             value: "c".into(),
-                            leaf: Leaf::new(&tokens.tokens[5].location)
+                            leaf: Location::new(&tokens.tokens[5].location)
                         }
                     ))),
                     right: Box::new(Expression::Literal(Literal {
                         value: Value::Integer(1),
-                        leaf: Leaf::new(&tokens.tokens[7].location)
+                        leaf: Location::new(&tokens.tokens[7].location)
                     })),
-                    operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[6].location)),
+                    operator: BinaryOperator::GreaterThan(Location::new(&tokens.tokens[6].location)),
                 })),
                 order_by: vec![].into_boxed_slice(),
                 group_by: vec![Identifier::Single(SingleIdentifier {
                     value: "e".into(),
-                    leaf: Leaf::new(&tokens.tokens[10].location)
+                    leaf: Location::new(&tokens.tokens[10].location)
                 })]
                 .into_boxed_slice(),
                 limit: None,
@@ -1530,16 +1530,16 @@ mod test {
                     expression: Expression::Function(Function {
                         name: Identifier::Single(SingleIdentifier {
                             value: "count".into(),
-                            leaf: Leaf::new(&tokens.tokens[1].location)
+                            leaf: Location::new(&tokens.tokens[1].location)
                         }),
-                        args: vec![Expression::Identifier(Identifier::Wildcard(Leaf::new(
+                        args: vec![Expression::Identifier(Identifier::Wildcard(Location::new(
                             &tokens.tokens[3].location
                         )))]
                         .into_boxed_slice(),
                     }),
                     alias: Identifier::Single(SingleIdentifier {
                         value: "a".into(),
-                        leaf: Leaf::new(&tokens.tokens[5].location)
+                        leaf: Location::new(&tokens.tokens[5].location)
                     })
                 })]
                 .into_boxed_slice(),
@@ -1553,14 +1553,14 @@ mod test {
                     left: Box::new(Expression::Identifier(Identifier::Single(
                         SingleIdentifier {
                             value: "a".into(),
-                            leaf: Leaf::new(&tokens.tokens[7].location)
+                            leaf: Location::new(&tokens.tokens[7].location)
                         }
                     ))),
                     right: Box::new(Expression::Literal(Literal {
                         value: Value::Integer(1),
-                        leaf: Leaf::new(&tokens.tokens[9].location)
+                        leaf: Location::new(&tokens.tokens[9].location)
                     })),
-                    operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[8].location)),
+                    operator: BinaryOperator::GreaterThan(Location::new(&tokens.tokens[8].location)),
                 })),
             })
         );
@@ -1584,11 +1584,11 @@ mod test {
                         vec![
                             SingleIdentifier {
                                 value: "t".into(),
-                                leaf: Leaf::new(&tokens.tokens[1].location)
+                                leaf: Location::new(&tokens.tokens[1].location)
                             },
                             SingleIdentifier {
                                 value: "a".into(),
-                                leaf: Leaf::new(&tokens.tokens[3].location)
+                                leaf: Location::new(&tokens.tokens[3].location)
                             },
                         ]
                         .into_boxed_slice()
@@ -1600,7 +1600,7 @@ mod test {
                         items: vec![SelectItem::Expression(Expression::Identifier(
                             Identifier::Single(SingleIdentifier {
                                 value: "b".into(),
-                                leaf: Leaf::new(&tokens.tokens[7].location)
+                                leaf: Location::new(&tokens.tokens[7].location)
                             })
                         ))]
                         .into_boxed_slice(),
@@ -1608,7 +1608,7 @@ mod test {
                             expression: Expression::Identifier(Identifier::Single(
                                 SingleIdentifier {
                                     value: "c".into(),
-                                    leaf: Leaf::new(&tokens.tokens[9].location)
+                                    leaf: Location::new(&tokens.tokens[9].location)
                                 }
                             )),
                             alias: None,
@@ -1623,7 +1623,7 @@ mod test {
                     })),
                     alias: Some(Identifier::Single(SingleIdentifier {
                         value: "t".into(),
-                        leaf: Leaf::new(&tokens.tokens[12].location)
+                        leaf: Location::new(&tokens.tokens[12].location)
                     }))
                 }]
                 .into_boxed_slice(),
