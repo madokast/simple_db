@@ -89,7 +89,12 @@ pub struct OrderBy {
 
 impl Display for OrderBy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ORDER BY {} {}", self.literal, if self.asc { "ASC" } else { "DESC" })
+        write!(
+            f,
+            "ORDER BY {} {}",
+            self.literal,
+            if self.asc { "ASC" } else { "DESC" }
+        )
     }
 }
 

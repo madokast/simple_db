@@ -8,6 +8,7 @@ pub enum Expression {
     Identifier(Identifier),             // col1 tab1.col1
     BinaryExpression(BinaryExpression), // 1+2
     UnaryExpression(UnaryExpression),   // -1
+    Function(Function),
 }
 
 impl Display for Expression {
@@ -17,7 +18,28 @@ impl Display for Expression {
             Expression::Identifier(identifier) => write!(f, "{}", identifier),
             Expression::BinaryExpression(binary_expression) => write!(f, "({})", binary_expression),
             Expression::UnaryExpression(unary_expression) => write!(f, "{}", unary_expression),
+            Expression::Function(function) => write!(f, "{}", function),
         }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Function {
+    pub name: Identifier,
+    pub args: Box<[Expression]>,
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        write!(f, "(")?;
+        for (index, arg) in self.args.iter().enumerate() {
+            if index > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", arg)?;
+        }
+        write!(f, ")")
     }
 }
 
