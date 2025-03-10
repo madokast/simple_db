@@ -7,27 +7,28 @@ use super::{
 
 use super::str_scanner::Scanner;
 
-pub struct Tokenizer {
+pub struct Tokenizer<'a> {
     key_words: &'static HashMap<&'static str, Keyword>,
     ley_word_max_length: usize,
+    scanner: Scanner<'a>,
 }
 
-impl Tokenizer {
-    pub fn new() -> Self {
+impl<'a> Tokenizer<'a> {
+    pub fn new(sql: &'a str) -> Self {
         Self {
             key_words: Keyword::map(),
             ley_word_max_length: Keyword::max_length(),
+            scanner: Scanner::new(sql),
         }
     }
 
     /// tokenize the sql
-    pub fn tokenize(&self, sql: &str) -> Result<ParsedTokens, TokenizeError> {
-        let mut scanner: Scanner<'_> = Scanner::new(sql);
+    pub fn tokenize(&mut self) -> Result<ParsedTokens, TokenizeError> {
         let mut tokens: Vec<ParsedToken> = vec![];
 
         // 循环获取下一个 token
         loop {
-            match self.next_token(&mut scanner) {
+            match self.next_token() {
                 Ok(token) => match token {
                     Some(t) => tokens.push(t),
                     None => break,
@@ -36,32 +37,32 @@ impl Tokenizer {
             }
         }
 
-        return Ok(ParsedTokens::new(tokens, sql));
+        return Ok(ParsedTokens::new(tokens, self.scanner.text()));
     }
 
     /// read next_token from scanner
-    fn next_token(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_token(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
         loop {
-            match scanner.peek() {
+            match self.scanner.peek() {
                 Some(first) => match first {
-                    'a'..='z' | 'A'..='Z' => return self.next_id_kw(scanner, first),
-                    '\'' => return self.next_string(scanner),
-                    '0'..='9' => return self.next_number(scanner, first),
-                    ' ' | '\r' | '\n' => scanner.next(),
-                    '=' => return self.token_and_next(Token::Equal, scanner),
-                    ';' => return self.token_and_next(Token::Semicolon, scanner),
-                    '.' => return self.token_and_next(Token::Period, scanner),
-                    ',' => return self.token_and_next(Token::Comma, scanner),
-                    '+' => return self.token_and_next(Token::Plus, scanner),
-                    '-' => return self.token_and_next(Token::Minus, scanner),
-                    '*' => return self.token_and_next(Token::Multiply, scanner),
-                    '/' => return self.token_and_next(Token::Divide, scanner),
-                    '(' => return self.token_and_next(Token::LeftParenthesis, scanner),
-                    ')' => return self.token_and_next(Token::RightParenthesis, scanner),
-                    '<' => return self.next_less(scanner),
-                    '>' => return self.next_great(scanner),
-                    '!' => return self.next_bang(scanner),
-                    _ => return self.make_error(format_args!("unknown char {}", first), scanner),
+                    'a'..='z' | 'A'..='Z' => return self.next_id_kw(first),
+                    '\'' => return self.next_string(),
+                    '0'..='9' => return self.next_number(first),
+                    ' ' | '\r' | '\n' => self.scanner.next(),
+                    '=' => return self.token_and_next(Token::Equal),
+                    ';' => return self.token_and_next(Token::Semicolon),
+                    '.' => return self.token_and_next(Token::Period),
+                    ',' => return self.token_and_next(Token::Comma),
+                    '+' => return self.token_and_next(Token::Plus),
+                    '-' => return self.token_and_next(Token::Minus),
+                    '*' => return self.token_and_next(Token::Multiply),
+                    '/' => return self.token_and_next(Token::Divide),
+                    '(' => return self.token_and_next(Token::LeftParenthesis),
+                    ')' => return self.token_and_next(Token::RightParenthesis),
+                    '<' => return self.next_less(),
+                    '>' => return self.next_great(),
+                    '!' => return self.next_bang(),
+                    _ => return self.make_error(format_args!("unknown char {}", first)),
                 },
                 None => return Ok(None),
             }
@@ -69,44 +70,44 @@ impl Tokenizer {
     }
 
     /// Reads the next bang neq
-    fn next_bang(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
-        scanner.next();
-        let token: Token = match scanner.peek() {
+    fn next_bang(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
+        self.scanner.next();
+        let token: Token = match self.scanner.peek() {
             Some(c) => match c {
                 '=' => {
-                    scanner.next();
+                    self.scanner.next();
                     Token::NotEqual
                 }
                 _ => {
-                    return self.make_error(format_args!("unexpected char {}", c), scanner);
+                    return self.make_error(format_args!("unexpected char {}", c));
                 }
             },
             None => {
-                return self.make_error(format_args!("unexpected end of sql"), scanner);
+                return self.make_error(format_args!("unexpected end of sql"));
             }
         };
         Ok(Some(ParsedToken::new(token, start_location)))
     }
 
     /// Read the next string literal
-    fn next_string(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
+    fn next_string(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
         let mut text: String = String::new();
 
-        scanner.next(); // consume
-        while let Some(c) = scanner.peek() {
+        self.scanner.next(); // consume
+        while let Some(c) = self.scanner.peek() {
             match c {
                 '\'' => {
                     // may end string but may escape
-                    scanner.next();
-                    if let Some(n) = scanner.peek() {
+                    self.scanner.next();
+                    if let Some(n) = self.scanner.peek() {
                         match n {
                             '\'' => {
                                 // escape
                                 // escape
                                 text.push('\'');
-                                scanner.next();
+                                self.scanner.next();
                             }
                             ';' | '=' | '>' | '<' | ',' | '.' => {
                                 // end string
@@ -114,29 +115,26 @@ impl Tokenizer {
                             }
                             ' ' | '\r' | '\n' => {
                                 // end and consume
-                                scanner.next();
+                                self.scanner.next();
                                 break;
                             }
                             _ => {
-                                return self.make_error(
-                                    format_args!("unexpected char {} after text {}", n, text),
-                                    scanner,
-                                );
+                                return self.make_error(format_args!(
+                                    "unexpected char {} after text {}",
+                                    n, text
+                                ));
                             }
                         }
                     }
                 }
                 '\r' | '\n' => {
                     // newline in string reading
-                    return self.make_error(
-                        format_args!("unexpected newline in string literal"),
-                        scanner,
-                    );
+                    return self.make_error(format_args!("unexpected newline in string literal"));
                 }
                 '\\' => {
                     // escape \
-                    scanner.next();
-                    match scanner.peek() {
+                    self.scanner.next();
+                    match self.scanner.peek() {
                         Some(c) => match c {
                             '\\' => text.push('\\'),
                             '\'' => text.push('\''),
@@ -145,23 +143,18 @@ impl Tokenizer {
                             't' => text.push('\t'),
                             'r' => text.push('\r'),
                             '0' => text.push('\0'),
-                            _ => {
-                                return self
-                                    .make_error(format_args!("unknown escape char {}", c), scanner)
-                            }
+                            _ => return self.make_error(format_args!("unknown escape char {}", c)),
                         },
                         None => {
-                            return self.make_error(
-                                format_args!("unexpected end of string literal"),
-                                scanner,
-                            )
+                            return self
+                                .make_error(format_args!("unexpected end of string literal"))
                         }
                     }
-                    scanner.next();
+                    self.scanner.next();
                 }
                 _ => {
                     text.push(c);
-                    scanner.next();
+                    self.scanner.next();
                 }
             }
         }
@@ -173,20 +166,20 @@ impl Tokenizer {
     }
 
     /// Reads the next gt, gte
-    fn next_great(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
+    fn next_great(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
 
-        scanner.next();
-        let token: Token = match scanner.peek() {
+        self.scanner.next();
+        let token: Token = match self.scanner.peek() {
             Some(c) => match c {
                 '=' => {
-                    scanner.next();
+                    self.scanner.next();
                     Token::GreaterThanOrEqual
                 }
                 _ => Token::GreaterThan,
             },
             None => {
-                return self.make_error(format_args!("unexpected end of sql"), scanner);
+                return self.make_error(format_args!("unexpected end of sql"));
             }
         };
 
@@ -194,24 +187,24 @@ impl Tokenizer {
     }
 
     /// Reads the next lt, lte, neq
-    fn next_less(&self, scanner: &mut Scanner<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
+    fn next_less(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
 
-        scanner.next();
-        let token: Token = match scanner.peek() {
+        self.scanner.next();
+        let token: Token = match self.scanner.peek() {
             Some(c) => match c {
                 '=' => {
-                    scanner.next();
+                    self.scanner.next();
                     Token::LessThanOrEqual
                 }
                 '>' => {
-                    scanner.next();
+                    self.scanner.next();
                     Token::NotEqual
                 }
                 _ => Token::LessThan,
             },
             None => {
-                return self.make_error(format_args!("unexpected end of sql"), scanner);
+                return self.make_error(format_args!("unexpected end of sql"));
             }
         };
 
@@ -219,12 +212,8 @@ impl Tokenizer {
     }
 
     /// Reads the next number
-    fn next_number(
-        &self,
-        scanner: &mut Scanner<'_>,
-        first: char,
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
+    fn next_number(&mut self, first: char) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
 
         let mut leading_zero: u16 = 0;
         let mut number = None;
@@ -236,27 +225,24 @@ impl Tokenizer {
             number = Some(first);
         }
 
-        scanner.next(); // consume
-        while let Some(c) = scanner.peek() {
+        self.scanner.next(); // consume
+        while let Some(c) = self.scanner.peek() {
             match c {
                 '0' => {
                     // 如果 number 存在，则 number*=10，否则 leading_zero++
                     if let Some(num) = number {
                         number = num.checked_mul(10);
                         if number.is_none() {
-                            return self.make_error(
-                                format_args!("too large number {} * 10", num),
-                                scanner,
-                            );
+                            return self.make_error(format_args!("too large number {} * 10", num));
                         }
                     } else {
                         if let Some(temp) = leading_zero.checked_add(1) {
                             leading_zero = temp
                         } else {
-                            return self.make_error(format_args!("too many zeros"), scanner);
+                            return self.make_error(format_args!("too many zeros"));
                         }
                     }
-                    scanner.next();
+                    self.scanner.next();
                 }
                 '1'..='9' => {
                     let digit = c as u64 - '0' as u64;
@@ -267,21 +253,16 @@ impl Tokenizer {
                         if let Some(num) = number {
                             number = num.checked_add(digit);
                             if number.is_none() {
-                                return self.make_error(
-                                    format_args!("too large number {} * 10", num),
-                                    scanner,
-                                );
+                                return self
+                                    .make_error(format_args!("too large number {} * 10", num));
                             }
                         } else {
-                            return self.make_error(
-                                format_args!("too large number {} * 10", num),
-                                scanner,
-                            );
+                            return self.make_error(format_args!("too large number {} * 10", num));
                         }
                     } else {
                         number = Some(digit);
                     }
-                    scanner.next();
+                    self.scanner.next();
                 }
                 _ => break,
             }
@@ -292,20 +273,16 @@ impl Tokenizer {
     }
 
     /// Reads the next identifier or keyword token from the scanner
-    fn next_id_kw(
-        &self,
-        scanner: &mut Scanner<'_>,
-        first: char,
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
+    fn next_id_kw(&mut self, first: char) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
 
         let mut word: String = first.to_string();
-        scanner.next(); // consume
-        while let Some(c) = scanner.peek() {
+        self.scanner.next(); // consume
+        while let Some(c) = self.scanner.peek() {
             match c {
                 'a'..='z' | 'A'..='Z' | '_' => {
                     word.push(c);
-                    scanner.next();
+                    self.scanner.next();
                 }
                 _ => break,
             }
@@ -325,26 +302,18 @@ impl Tokenizer {
         Ok(Some(ParsedToken::new(token, start_location)))
     }
 
-    fn token_and_next(
-        &self,
-        token: Token,
-        scanner: &mut Scanner<'_>,
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
-        let start_location: super::str_scanner::TokenLocation = scanner.location();
-        scanner.next();
+    fn token_and_next(&mut self, token: Token) -> Result<Option<ParsedToken>, TokenizeError> {
+        let start_location: super::str_scanner::TokenLocation = self.scanner.location();
+        self.scanner.next();
         Ok(Some(ParsedToken::new(token, start_location)))
     }
 
     /// create tokenize-error
-    fn make_error(
-        &self,
-        format_args: Arguments<'_>,
-        scanner: &Scanner<'_>,
-    ) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn make_error(&self, format_args: Arguments<'_>) -> Result<Option<ParsedToken>, TokenizeError> {
         Err(TokenizeError::new(
             &format_args.to_string(),
-            scanner.location(),
-            scanner.text(),
+            self.scanner.location(),
+            self.scanner.text(),
         ))
     }
 }
@@ -360,20 +329,20 @@ mod test {
 
     #[test]
     fn select() {
-        let tokens = Tokenizer::new().tokenize("SELECT").unwrap();
+        let tokens = Tokenizer::new("SELECT").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(tokens, vec![Token::Keyword(Keyword::SELECT)]);
     }
 
     #[test]
     fn select_loc() {
-        let tokens = Tokenizer::new().tokenize("SELECT").unwrap();
+        let tokens = Tokenizer::new("SELECT").tokenize().unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
     }
 
     #[test]
     fn select_1() {
-        let tokens = Tokenizer::new().tokenize("SELECT 1").unwrap();
+        let tokens = Tokenizer::new("SELECT 1").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -386,14 +355,14 @@ mod test {
 
     #[test]
     fn select_1_loc() {
-        let tokens = Tokenizer::new().tokenize("SELECT 1").unwrap();
+        let tokens = Tokenizer::new("SELECT 1").tokenize().unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(tokens.tokens()[1].location.column_number, 8);
     }
 
     #[test]
     fn select_123() {
-        let tokens = Tokenizer::new().tokenize("SELECT 123").unwrap();
+        let tokens = Tokenizer::new("SELECT 123").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -406,7 +375,7 @@ mod test {
 
     #[test]
     fn select_0() {
-        let tokens = Tokenizer::new().tokenize("SELECT 0").unwrap();
+        let tokens = Tokenizer::new("SELECT 0").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -419,7 +388,7 @@ mod test {
 
     #[test]
     fn select_00000() {
-        let tokens = Tokenizer::new().tokenize("SELECT 00000").unwrap();
+        let tokens = Tokenizer::new("SELECT 00000").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -432,7 +401,7 @@ mod test {
 
     #[test]
     fn select_00123() {
-        let tokens = Tokenizer::new().tokenize("SELECT 00123").unwrap();
+        let tokens = Tokenizer::new("SELECT 00123").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -445,7 +414,7 @@ mod test {
 
     #[test]
     fn select_1_end() {
-        let tokens = Tokenizer::new().tokenize("SELECT 1;").unwrap();
+        let tokens = Tokenizer::new("SELECT 1;").tokenize().unwrap();
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
             tokens,
@@ -459,7 +428,7 @@ mod test {
 
     #[test]
     fn select_1_end_loc() {
-        let tokens = Tokenizer::new().tokenize("SELECT 1  ;").unwrap();
+        let tokens = Tokenizer::new("SELECT 1  ;").tokenize().unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(tokens.tokens()[1].location.column_number, 8);
         assert_eq!(tokens.tokens()[2].location.column_number, 11);
@@ -467,7 +436,7 @@ mod test {
 
     #[test]
     fn select_text() {
-        let tokens = Tokenizer::new().tokenize("SELECT 'hello';").unwrap();
+        let tokens = Tokenizer::new("SELECT 'hello';").tokenize().unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(tokens.tokens()[1].location.column_number, 8);
         assert_eq!(tokens.tokens()[2].location.column_number, 15);
@@ -484,7 +453,7 @@ mod test {
 
     #[test]
     fn select_text_escape() {
-        let tokens = Tokenizer::new().tokenize("SELECT '''he''llo''';").unwrap();
+        let tokens = Tokenizer::new("SELECT '''he''llo''';").tokenize().unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(tokens.tokens()[1].location.column_number, 8);
         assert_eq!(tokens.tokens()[2].location.column_number, 21);
@@ -501,13 +470,13 @@ mod test {
 
     #[test]
     fn select_text_escape2() {
-        assert!(Tokenizer::new().tokenize("SELECT '''he\nllo''';").is_err())
+        assert!(Tokenizer::new("SELECT '''he\nllo''';").tokenize().is_err())
     }
 
     #[test]
     fn select_text_escape3() {
-        let tokens = Tokenizer::new()
-            .tokenize("SELECT '''he\\r\\nllo''';")
+        let tokens = Tokenizer::new("SELECT '''he\\r\\nllo''';")
+            .tokenize()
             .unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(tokens.tokens()[1].location.column_number, 8);
@@ -525,7 +494,7 @@ mod test {
 
     #[test]
     fn select_abc_from_def() {
-        let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
+        let tokens = Tokenizer::new("SELECT abc from dEf;").tokenize().unwrap();
         println!("[{}]", tokens);
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();
         assert_eq(
@@ -542,7 +511,7 @@ mod test {
 
     #[test]
     fn select_abc_from_def_loc() {
-        let tokens = Tokenizer::new().tokenize("SELECT abc from dEf;").unwrap();
+        let tokens = Tokenizer::new("SELECT abc from dEf;").tokenize().unwrap();
         assert_eq!(tokens.tokens()[0].location.column_number, 1);
         assert_eq!(
             tokens.tokens()[1].location.column_number,
@@ -564,8 +533,8 @@ mod test {
 
     #[test]
     fn select_abc_from_def_where() {
-        let tokens = Tokenizer::new()
-            .tokenize("SELECT abc, kk, 1 from dEf where cc > 12;")
+        let tokens = Tokenizer::new("SELECT abc, kk, 1 from dEf where cc > 12;")
+            .tokenize()
             .unwrap();
         println!("[{}]", tokens);
         let tokens: Vec<_> = tokens.tokens().iter().map(|t| t.token.clone()).collect();

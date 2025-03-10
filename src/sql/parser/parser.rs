@@ -564,7 +564,7 @@ mod test {
     /// test empty statement
     #[test]
     fn test_empty_statement() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize(";").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new(";").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -576,7 +576,7 @@ mod test {
 
     #[test]
     fn select_a() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT a;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT a;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         // println!("{:?}", statements);
@@ -604,7 +604,7 @@ mod test {
 
     #[test]
     fn select_abc_abc_def() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT abcABCdef;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT abcABCdef;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         // println!("{:?}", statements);
@@ -632,7 +632,7 @@ mod test {
 
     #[test]
     fn select_wildcard() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT *").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT *").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         // println!("{:?}", statements);
@@ -657,7 +657,7 @@ mod test {
 
     #[test]
     fn select_abc_abc_def_dot() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT abc.ABC.def;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT abc.ABC.def;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         // println!("{:?}", statements);
@@ -698,8 +698,8 @@ mod test {
 
     #[test]
     fn select_many() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize(" SELECT    a, * ,  b.c ;  ")
+        let tokens: ParsedTokens = Tokenizer::new(" SELECT    a, * ,  b.c ;  ")
+            .tokenize()
             .unwrap();
         println!("{:#?}", tokens);
         let mut parser: Parser<'_> = Parser::new(&tokens);
@@ -747,7 +747,7 @@ mod test {
 
     #[test]
     fn select_str() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 'hello'").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 'hello'").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         // println!("{:?}", statements);
@@ -773,8 +773,8 @@ mod test {
 
     #[test]
     fn select_str2() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT 'hello', 'world!\\n';")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 'hello', 'world!\\n';")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -807,8 +807,8 @@ mod test {
 
     #[test]
     fn select_int() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT 0, 00, 123, 001100;")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 0, 00, 123, 001100;")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -849,8 +849,8 @@ mod test {
 
     #[test]
     fn select_float() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT 1.0, 1.25, 0.625, 3.0625")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 1.0, 1.25, 0.625, 3.0625")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -891,8 +891,8 @@ mod test {
 
     #[test]
     fn select_int_int_float() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT 1.0, 1.25, 0.625, 3.0625, 123")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 1.0, 1.25, 0.625, 3.0625, 123")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -937,7 +937,7 @@ mod test {
 
     #[test]
     fn test_one_add_two() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1+2;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 1+2;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -973,7 +973,7 @@ mod test {
 
     #[test]
     fn test_one_add_two_minus_three() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1+2-3;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 1+2-3;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1016,7 +1016,7 @@ mod test {
 
     #[test]
     fn test_one_add_two_mul_three() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1+2*3;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 1+2*3;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1061,7 +1061,7 @@ mod test {
 
     #[test]
     fn test_paren_1() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT (1);").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT (1);").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1088,7 +1088,7 @@ mod test {
 
     #[test]
     fn test_paren_paren_1() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT ((1));").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT ((1));").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1115,7 +1115,7 @@ mod test {
 
     #[test]
     fn test_2_mul_sum_of_3_and_4() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 2*(3+4);").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT 2*(3+4);").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1158,7 +1158,7 @@ mod test {
 
     #[test]
     fn test_function_call() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT foo();").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT foo();").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1188,7 +1188,7 @@ mod test {
 
     #[test]
     fn test_function_call_1() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT foo(1);").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT foo(1);").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1222,7 +1222,7 @@ mod test {
 
     #[test]
     fn test_function_call_1_a_b() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT foo(1, a.b);").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT foo(1, a.b);").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1271,7 +1271,7 @@ mod test {
 
     #[test]
     fn test_function_call_1_a_add_b() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT foo(1, a+b);").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT foo(1, a+b);").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1322,7 +1322,7 @@ mod test {
 
     #[test]
     fn test_select_a_from_b() {
-        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT a FROM b;").unwrap();
+        let tokens: ParsedTokens = Tokenizer::new("SELECT a FROM b;").tokenize().unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
         assert_eq!(statements.statements.len(), 1);
@@ -1358,8 +1358,8 @@ mod test {
 
     #[test]
     fn test_select_a_from_c_d_as_e() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT a FROM c, d AS e;")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT a FROM c, d AS e;")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -1408,8 +1408,8 @@ mod test {
 
     #[test]
     fn test_select_a_from_b_where_c() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT a FROM b WHERE c>1;")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT a FROM b WHERE c>1;")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -1458,8 +1458,8 @@ mod test {
 
     #[test]
     fn test_select_a_from_b_where_c_group_by_e() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT a FROM b WHERE c>1 GROUP BY e;")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT a FROM b WHERE c>1 GROUP BY e;")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
@@ -1512,8 +1512,8 @@ mod test {
 
     #[test]
     fn test_having() {
-        let tokens: ParsedTokens = Tokenizer::new()
-            .tokenize("SELECT count(*) a HAVING a>1;")
+        let tokens: ParsedTokens = Tokenizer::new("SELECT count(*) a HAVING a>1;")
+            .tokenize()
             .unwrap();
         let mut parser: Parser<'_> = Parser::new(&tokens);
         let statements: Statements = parser.parse().unwrap();
