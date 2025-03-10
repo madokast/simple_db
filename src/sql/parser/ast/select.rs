@@ -1,3 +1,6 @@
+use std::fmt::Display;
+
+use super::expression::Expression;
 use super::identifier::Identifier;
 use super::leaf::Leaf;
 use super::literal::Literal;
@@ -13,18 +16,68 @@ pub struct Select {
     pub offset: Option<Offset>,
 }
 
+impl Display for Select {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SELECT ")?;
+        for (index, item) in self.items.iter().enumerate() {
+            if index > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", item)?;
+        }
+        if self.from.len() > 0 {
+            write!(f, " FROM ")?;
+            for (index, identifier) in self.from.iter().enumerate() {
+                if index > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", identifier)?;
+            }
+        }
+        if let Some(wheres) = &self.wheres {
+            write!(f, " WHERE {}", wheres)?;
+        }
+        if self.group_by.len() > 0 {
+            write!(f, " GROUP BY ")?;
+            for (index, identifier) in self.group_by.iter().enumerate() {
+                if index > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", identifier)?;
+            }
+        }
+        if self.order_by.len() > 0 {
+            write!(f, " ORDER BY ")?;
+            for (index, order_by) in self.order_by.iter().enumerate() {
+                if index > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", order_by)?;
+            }
+        }
+        if let Some(limit) = &self.limit {
+            write!(f, " LIMIT {}", limit)?;
+        }
+        if let Some(offset) = &self.offset {
+            write!(f, " OFFSET {}", offset)?;
+        }
+        write!(f, ";")
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectItem {
     Wildcard(Leaf), // *
     Expression(Expression),
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Expression {
-    Literal(Literal),       // 123 "123"
-    Identifier(Identifier), // col1 tab1.col1
-    BinaryExpression(BinaryExpression),
-    UnaryExpression(UnaryExpression),
+impl Display for SelectItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SelectItem::Wildcard(_) => write!(f, "*"),
+            SelectItem::Expression(expression) => write!(f, "{}", expression),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -34,10 +87,22 @@ pub struct OrderBy {
     pub leaf: Leaf,
 }
 
+impl Display for OrderBy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ORDER BY {} {}", self.literal, if self.asc { "ASC" } else { "DESC" })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Limit {
     pub limit: u64,
     pub leaf: Leaf,
+}
+
+impl Display for Limit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "LIMIT {}", self.limit)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -46,38 +111,8 @@ pub struct Offset {
     pub leaf: Leaf,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct BinaryExpression {
-    pub left: Box<Expression>,
-    pub right: Box<Expression>,
-    pub operator: BinaryOperator,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct UnaryExpression {
-    pub operator: UnaryOperator,
-    pub expression: Box<Expression>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum BinaryOperator {
-    Plus(Leaf),
-    Minus(Leaf),
-    Multiply(Leaf),
-    Divide(Leaf),
-    Equal(Leaf),
-    NotEqual(Leaf),
-    GreaterThan(Leaf),
-    LessThan(Leaf),
-    GreaterThanOrEqual(Leaf),
-    LessThanOrEqual(Leaf),
-    AND(Leaf),
-    OR(Leaf),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum UnaryOperator {
-    Plus(Leaf),
-    Minus(Leaf),
-    NOT(Leaf),
+impl Display for Offset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OFFSET {}", self.offset)
+    }
 }

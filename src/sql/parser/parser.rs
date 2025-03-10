@@ -10,10 +10,13 @@ use crate::sql::{
 
 use super::{
     ast::{
+        expression::{
+            BinaryExpression, BinaryOperator, Expression, UnaryExpression, UnaryOperator,
+        },
         identifier::{Identifier, SingleIdentifier},
         leaf::Leaf,
         literal::{Literal, Value},
-        select::{Expression, SelectItem},
+        select::SelectItem,
         Statement, Statements,
     },
     error::ParseError,
@@ -113,13 +116,70 @@ impl<'a> Parser<'a> {
                     self.next(); // consume *
                     Ok(w)
                 }
-                _ => Ok(SelectItem::Expression(self.parse_expression()?)),
+                _ => Ok(SelectItem::Expression(self.parse_expression(0)?)),
             },
             None => self.make_error(format_args!("unexpected end of input, expect select-item")),
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
+    fn parse_expression(&mut self, priority: usize) -> Result<Expression, ParseError> {
+        // 前缀表达式
+        let prefix: Option<UnaryOperator> = self.parse_prefix_operator()?;
+
+        // 表达式左侧
+        let mut left: Expression = self.parse_expression_operand()?;
+
+        // 补上前缀
+        if let Some(op) = prefix {
+            left = Expression::UnaryExpression(UnaryExpression {
+                operator: op,
+                expression: Box::new(left),
+            })
+        }
+
+        loop {
+            let operator: Option<BinaryOperator> = self.peek_binary_operator()?;
+            match operator {
+                Some(op) => {
+                    if priority < op.priority() {
+                        self.next(); // consume operator
+                        let right: Expression = self.parse_expression(op.priority())?;
+                        left = Expression::BinaryExpression(BinaryExpression {
+                            left: Box::new(left),
+                            operator: op,
+                            right: Box::new(right),
+                        })
+                    } else {
+                        return Ok(left);
+                    }
+                }
+                None => {
+                    return Ok(left);
+                }
+            }
+        }
+    }
+
+    /// parse prefix operator + - NOT
+    fn parse_prefix_operator(&mut self) -> Result<Option<UnaryOperator>, ParseError> {
+        match self.peek() {
+            Some(token) => match token.token {
+                Token::Plus => Ok(Some(UnaryOperator::Plus(Leaf::new(
+                    &self.location_and_next(),
+                )))),
+                Token::Minus => Ok(Some(UnaryOperator::Minus(Leaf::new(
+                    &self.location_and_next(),
+                )))),
+                Token::Keyword(Keyword::NOT) => Ok(Some(UnaryOperator::NOT(Leaf::new(
+                    &self.location_and_next(),
+                )))),
+                _ => Ok(None),
+            },
+            None => Ok(None),
+        }
+    }
+
+    fn parse_expression_operand(&mut self) -> Result<Expression, ParseError> {
         match self.peek() {
             Some(token) => match &token.token {
                 Token::Identifier(_) => Ok(Expression::Identifier(self.parse_identifier()?)),
@@ -137,6 +197,37 @@ impl<'a> Parser<'a> {
                 _ => self.make_error(format_args!("invalid token {token}, expect expression")),
             },
             None => self.make_error(format_args!("unexpected end of input, expect select-item")),
+        }
+    }
+
+    fn peek_binary_operator(&mut self) -> Result<Option<BinaryOperator>, ParseError> {
+        match self.peek() {
+            Some(token) => match token.token {
+                Token::Plus => Ok(Some(BinaryOperator::Plus(Leaf::new(self.location())))),
+                Token::Minus => Ok(Some(BinaryOperator::Minus(Leaf::new(self.location())))),
+                Token::Multiply => Ok(Some(BinaryOperator::Multiply(Leaf::new(self.location())))),
+                Token::Divide => Ok(Some(BinaryOperator::Divide(Leaf::new(self.location())))),
+                Token::Equal => Ok(Some(BinaryOperator::Equal(Leaf::new(self.location())))),
+                Token::NotEqual => Ok(Some(BinaryOperator::NotEqual(Leaf::new(self.location())))),
+                Token::LessThan => Ok(Some(BinaryOperator::LessThan(Leaf::new(self.location())))),
+                Token::GreaterThan => Ok(Some(BinaryOperator::GreaterThan(Leaf::new(
+                    self.location(),
+                )))),
+                Token::LessThanOrEqual => Ok(Some(BinaryOperator::LessThanOrEqual(Leaf::new(
+                    self.location(),
+                )))),
+                Token::GreaterThanOrEqual => Ok(Some(BinaryOperator::GreaterThanOrEqual(
+                    Leaf::new(self.location()),
+                ))),
+                Token::Keyword(Keyword::AND) => {
+                    Ok(Some(BinaryOperator::AND(Leaf::new(self.location()))))
+                }
+                Token::Keyword(Keyword::OR) => {
+                    Ok(Some(BinaryOperator::OR(Leaf::new(self.location()))))
+                }
+                _ => Ok(None),
+            },
+            None => Ok(None),
         }
     }
 
@@ -295,6 +386,12 @@ impl<'a> Parser<'a> {
         } else {
             &self.tokens[len - 1].location
         }
+    }
+
+    fn location_and_next(&mut self) -> TokenLocation {
+        let loc = self.location().clone();
+        self.next();
+        loc
     }
 
     fn make_error<T>(&self, format_args: Arguments) -> Result<T, ParseError> {
@@ -671,4 +768,128 @@ mod test {
             }))
         )
     }
+
+    #[test]
+    fn test_one_add_two() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1+2;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::BinaryExpression(
+                    BinaryExpression {
+                        left: Box::new(Expression::Literal(Literal {
+                            value: Value::Integer(1),
+                            leaf: Leaf::new(&tokens.tokens[1].location)
+                        })),
+                        right: Box::new(Expression::Literal(Literal {
+                            value: Value::Integer(2),
+                            leaf: Leaf::new(&tokens.tokens[3].location)
+                        })),
+                        operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[2].location)),
+                    }
+                ))]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_one_add_two_minus_three() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1+2-3;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::BinaryExpression(
+                    BinaryExpression {
+                        left: Box::new(Expression::BinaryExpression(
+                            BinaryExpression {
+                                left: Box::new(Expression::Literal(Literal {
+                                    value: Value::Integer(1),
+                                    leaf: Leaf::new(&tokens.tokens[1].location)
+                                })),
+                                right: Box::new(Expression::Literal(Literal {
+                                    value: Value::Integer(2),
+                                    leaf: Leaf::new(&tokens.tokens[3].location)
+                                })),
+                                operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[2].location)),
+                            }
+                        )),
+                        right: Box::new(Expression::Literal(Literal {
+                            value: Value::Integer(3),
+                            leaf: Leaf::new(&tokens.tokens[5].location),
+                        })),
+                        operator: BinaryOperator::Minus(Leaf::new(&tokens.tokens[4].location)),
+                    }
+                ))]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_one_add_two_mul_three() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 1+2*3;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::BinaryExpression(
+                    BinaryExpression {
+                        left: Box::new(Expression::Literal(Literal {
+                            value: Value::Integer(1),
+                            leaf: Leaf::new(&tokens.tokens[1].location)
+                        })),
+                        right: Box::new(Expression::BinaryExpression(
+                            BinaryExpression {
+                                left: Box::new(Expression::Literal(Literal {
+                                    value: Value::Integer(2),
+                                    leaf: Leaf::new(&tokens.tokens[3].location)
+                                })),
+                                right: Box::new(Expression::Literal(Literal {
+                                    value: Value::Integer(3),
+                                    leaf: Leaf::new(&tokens.tokens[5].location)
+                                })),
+                                operator: BinaryOperator::Multiply(Leaf::new(&tokens.tokens[4].location)),
+                            }
+                        )),
+                        operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[2].location)),
+                    }
+                ))]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
 }

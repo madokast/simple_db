@@ -19,12 +19,16 @@ pub enum Keyword {
     TABLE,
     IS,
     NULL,
+    AND,
+    OR,
+    NOT,
 } // 注意同步更新 ALL_KEY_WORDS
 
 use Keyword::*;
 
-const ALL_KEY_WORDS: [Keyword; 15] = [
+const ALL_KEY_WORDS: [Keyword; 18] = [
     SELECT, FROM, WHERE, GROUP, BY, ORDER, LIMIT, OFFSET, AS, DESC, ASC, CREATE, TABLE, IS, NULL,
+    AND, OR, NOT,
 ];
 
 static KEY_WORD_MAP: LazyLock<HashMap<&'static str, Keyword>> = LazyLock::new(|| {
@@ -71,6 +75,9 @@ impl Keyword {
             TABLE => "TABLE",
             IS => "IS",
             NULL => "NULL",
+            AND => "AND",
+            OR => "OR",
+            NOT => "NOT",
         }
     }
 }
