@@ -40,8 +40,13 @@ static KEYWORD_MAP: LazyLock<HashMap<&'static str, Keyword>> = LazyLock::new(|| 
     key_words
 });
 
-static KEYWORD_MAX_LENGTH: LazyLock<usize> = LazyLock::new(|| 
-    Keyword::all().iter().map(|kw| kw.to_str().len()).max().unwrap());
+static KEYWORD_MAX_LENGTH: LazyLock<usize> = LazyLock::new(|| {
+    Keyword::all()
+        .iter()
+        .map(|kw| kw.to_str().len())
+        .max()
+        .unwrap()
+});
 
 impl Keyword {
     pub fn all() -> &'static [Keyword] {

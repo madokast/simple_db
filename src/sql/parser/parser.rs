@@ -113,8 +113,9 @@ impl<'a> Parser<'a> {
                             }
                         },
                         _ => {
-                            return self
-                                .make_error(format_args!("invalid token {token}, expect keyword"))
+                            return self.make_error(format_args!(
+                                "invalid token {token}, expect keyword FROM"
+                            ))
                         }
                     }
                 }
@@ -176,7 +177,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             } else {
-                return self.make_error(format_args!("expect BY"));
+                return self.make_error(format_args!("expect keyword BY of GROUP BY"));
             }
         }
         Ok(group_by.into_boxed_slice())
@@ -203,7 +204,7 @@ impl<'a> Parser<'a> {
                     });
                 }
             } else {
-                return self.make_error(format_args!("expect BY"));
+                return self.make_error(format_args!("expect keyword BY of ORDER BY"));
             }
         }
         Ok(order_by.into_boxed_slice())

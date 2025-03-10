@@ -1,7 +1,9 @@
 use std::{collections::HashMap, fmt::Arguments};
 
 use super::{
-    error::TokenizeError, str_scanner::TokenLocation, token::{Keyword, ParsedToken, ParsedTokens, Token}
+    error::TokenizeError,
+    str_scanner::TokenLocation,
+    token::{Keyword, ParsedToken, ParsedTokens, Token},
 };
 
 use super::str_scanner::Scanner;
@@ -9,7 +11,7 @@ use super::str_scanner::Scanner;
 pub struct Tokenizer<'a> {
     key_words: &'static HashMap<&'static str, Keyword>,
     ley_word_max_length: usize,
-    sql:&'a str,
+    sql: &'a str,
     scanner: Scanner<'a>,
 }
 
