@@ -17,7 +17,7 @@ pub struct Statements {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Select(Box<Select>),
+    Select(Select),
     CreateTable,
     Empty(Leaf),
 }
@@ -25,7 +25,7 @@ pub enum Statement {
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::Select(select) => write!(f, "{}", select),
+            Statement::Select(select) => write!(f, "{};", select),
             Statement::CreateTable => write!(f, "CREATE TABLE"),
             Statement::Empty(_) => write!(f, ";"),
         }

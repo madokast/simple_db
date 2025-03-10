@@ -42,6 +42,7 @@ impl<'a> Parser<'a> {
         let mut statements: Vec<Statement> = Vec::new();
         while self.index < self.tokens.len() {
             statements.push(self.parse_statement()?);
+            self.next_if(|t| *t == Token::Semicolon);
         }
         Ok(Statements {
             statements: statements.into_boxed_slice(),
@@ -51,7 +52,7 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.peek().unwrap().token {
-            Token::Keyword(Keyword::SELECT) => self.parse_select(),
+            Token::Keyword(Keyword::SELECT) => Ok(Statement::Select(self.parse_select()?)),
             Token::Semicolon => self.parse_empty_statement(),
             _ => Err(ParseError::new(
                 "invalid statement",
@@ -61,7 +62,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_select(&mut self) -> Result<Statement, ParseError> {
+    fn parse_select(&mut self) -> Result<Select, ParseError> {
         debug_assert_eq!(self.peek().unwrap().token, Token::Keyword(Keyword::SELECT));
         self.next(); // consume SELECT
 
@@ -77,10 +78,7 @@ impl<'a> Parser<'a> {
 
         let order_by: Box<[OrderBy]> = self.parse_order_by()?;
 
-        // consume Semicolon ; if exists
-        self.next_if(|t| *t == Token::Semicolon);
-
-        Ok(Statement::Select(Box::new(Select {
+        Ok(Select {
             items: select_items,
             from: from,
             wheres: wheres,
@@ -89,7 +87,7 @@ impl<'a> Parser<'a> {
             order_by: order_by,
             limit: None,
             offset: None,
-        })))
+        })
     }
 
     fn parse_select_items(&mut self) -> Result<Box<[SelectItem]>, ParseError> {
@@ -129,7 +127,7 @@ impl<'a> Parser<'a> {
         if self.next_if(|t| *t == Token::Keyword(Keyword::FROM)) {
             let mut from: Vec<FromItem> = vec![];
             loop {
-                let identifier: Identifier = self.parse_identifier()?;
+                let expression: Expression = self.parse_expression(0)?;
                 let alias: Option<Identifier> =
                     if self.next_if(|t| *t == Token::Keyword(Keyword::AS)) {
                         Some(self.parse_identifier()?)
@@ -137,7 +135,7 @@ impl<'a> Parser<'a> {
                         None
                     };
                 from.push(FromItem {
-                    identifier: identifier,
+                    expression: expression,
                     alias: alias,
                 });
                 if !self.next_if(|t| *t == Token::Comma) {
@@ -302,6 +300,10 @@ impl<'a> Parser<'a> {
     fn parse_expression_operand(&mut self) -> Result<Expression, ParseError> {
         match self.peek() {
             Some(token) => match &token.token {
+                Token::Keyword(kw) => match kw {
+                    Keyword::SELECT => Ok(Expression::SubQuery(Box::new(self.parse_select()?))),
+                    _ => self.make_error(format_args!("invalid keyword {kw} expect expression")),
+                },
                 Token::Identifier(_) => {
                     let ident: Identifier = self.parse_identifier()?;
                     // parse function starts with '(' and, loop arguments until ')'
@@ -584,7 +586,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
@@ -599,7 +601,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -612,7 +614,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "abcABCdef".into(),
@@ -627,7 +629,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -640,7 +642,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Wildcard(Leaf::new(&tokens.tokens[1].location))
                 ))]
@@ -652,7 +654,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -665,7 +667,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Combined(
                         vec![
@@ -693,7 +695,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -709,7 +711,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![
                     SelectItem::Expression(Expression::Identifier(Identifier::Single(
                         SingleIdentifier {
@@ -742,7 +744,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -755,7 +757,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Literal(Literal {
                     value: Value::String("hello".into()),
                     leaf: Leaf::new(&tokens.tokens[1].location)
@@ -768,7 +770,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -783,7 +785,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::String("hello".into()),
@@ -802,7 +804,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -817,7 +819,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Integer(0),
@@ -844,7 +846,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -859,7 +861,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(1.0),
@@ -886,7 +888,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -901,7 +903,7 @@ mod test {
         assert_eq!(statements.statements.len(), 1);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![
                     SelectItem::Expression(Expression::Literal(Literal {
                         value: Value::Float(1.0),
@@ -932,7 +934,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         )
     }
 
@@ -946,7 +948,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::BinaryExpression(
                     BinaryExpression {
                         left: Box::new(Expression::Literal(Literal {
@@ -968,7 +970,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -982,7 +984,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::BinaryExpression(
                     BinaryExpression {
                         left: Box::new(Expression::BinaryExpression(BinaryExpression {
@@ -1011,7 +1013,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1025,7 +1027,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::BinaryExpression(
                     BinaryExpression {
                         left: Box::new(Expression::Literal(Literal {
@@ -1056,7 +1058,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1070,7 +1072,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Literal(Literal {
                     value: Value::Integer(1),
                     leaf: Leaf::new(&tokens.tokens[2].location)
@@ -1083,7 +1085,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1097,7 +1099,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Literal(Literal {
                     value: Value::Integer(1),
                     leaf: Leaf::new(&tokens.tokens[3].location)
@@ -1110,7 +1112,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1124,7 +1126,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::BinaryExpression(
                     BinaryExpression {
                         left: Box::new(Expression::Literal(Literal {
@@ -1153,7 +1155,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1167,7 +1169,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
@@ -1183,7 +1185,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1197,7 +1199,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
@@ -1217,7 +1219,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1231,7 +1233,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
@@ -1266,7 +1268,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1280,7 +1282,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Function(Function {
                     name: Identifier::Single(SingleIdentifier {
                         value: "foo".into(),
@@ -1317,7 +1319,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1331,7 +1333,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
@@ -1340,10 +1342,10 @@ mod test {
                 ))]
                 .into_boxed_slice(),
                 from: vec![FromItem {
-                    identifier: Identifier::Single(SingleIdentifier {
+                    expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                         value: "b".into(),
                         leaf: Leaf::new(&tokens.tokens[3].location)
-                    }),
+                    })),
                     alias: None
                 }]
                 .into_boxed_slice(),
@@ -1353,7 +1355,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1369,7 +1371,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
@@ -1379,17 +1381,17 @@ mod test {
                 .into_boxed_slice(),
                 from: vec![
                     FromItem {
-                        identifier: Identifier::Single(SingleIdentifier {
+                        expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                             value: "c".into(),
                             leaf: Leaf::new(&tokens.tokens[3].location)
-                        }),
+                        })),
                         alias: None
                     },
                     FromItem {
-                        identifier: Identifier::Single(SingleIdentifier {
+                        expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                             value: "d".into(),
                             leaf: Leaf::new(&tokens.tokens[5].location)
-                        }),
+                        })),
                         alias: Some(Identifier::Single(SingleIdentifier {
                             value: "e".into(),
                             leaf: Leaf::new(&tokens.tokens[7].location)
@@ -1403,7 +1405,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1419,7 +1421,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
@@ -1428,10 +1430,10 @@ mod test {
                 ))]
                 .into_boxed_slice(),
                 from: vec![FromItem {
-                    identifier: Identifier::Single(SingleIdentifier {
+                    expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                         value: "b".into(),
                         leaf: Leaf::new(&tokens.tokens[3].location)
-                    }),
+                    })),
                     alias: None,
                 }]
                 .into_boxed_slice(),
@@ -1453,7 +1455,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1469,7 +1471,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Expression(Expression::Identifier(
                     Identifier::Single(SingleIdentifier {
                         value: "a".into(),
@@ -1478,10 +1480,10 @@ mod test {
                 ))]
                 .into_boxed_slice(),
                 from: vec![FromItem {
-                    identifier: Identifier::Single(SingleIdentifier {
+                    expression: Expression::Identifier(Identifier::Single(SingleIdentifier {
                         value: "b".into(),
                         leaf: Leaf::new(&tokens.tokens[3].location)
-                    }),
+                    })),
                     alias: None,
                 }]
                 .into_boxed_slice(),
@@ -1507,7 +1509,7 @@ mod test {
                 limit: None,
                 offset: None,
                 having: None,
-            }))
+            })
         );
     }
 
@@ -1523,7 +1525,7 @@ mod test {
         println!("{:}", statements.statements[0]);
         assert_eq!(
             statements.statements[0],
-            Statement::Select(Box::new(Select {
+            Statement::Select(Select {
                 items: vec![SelectItem::Alias(Alias {
                     expression: Expression::Function(Function {
                         name: Identifier::Single(SingleIdentifier {
@@ -1560,7 +1562,78 @@ mod test {
                     })),
                     operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[8].location)),
                 })),
-            }))
+            })
+        );
+    }
+
+    #[test]
+    fn test_sub_query() {
+        let tokens: ParsedTokens = Tokenizer::new("SELECT t.a FROM (SELECT b from c) as t;")
+            .tokenize()
+            .unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Select {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::Combined(
+                        vec![
+                            SingleIdentifier {
+                                value: "t".into(),
+                                leaf: Leaf::new(&tokens.tokens[1].location)
+                            },
+                            SingleIdentifier {
+                                value: "a".into(),
+                                leaf: Leaf::new(&tokens.tokens[3].location)
+                            },
+                        ]
+                        .into_boxed_slice()
+                    )
+                ))]
+                .into_boxed_slice(),
+                from: vec![FromItem {
+                    expression: Expression::SubQuery(Box::new(Select {
+                        items: vec![SelectItem::Expression(Expression::Identifier(
+                            Identifier::Single(SingleIdentifier {
+                                value: "b".into(),
+                                leaf: Leaf::new(&tokens.tokens[7].location)
+                            })
+                        ))]
+                        .into_boxed_slice(),
+                        from: vec![FromItem {
+                            expression: Expression::Identifier(Identifier::Single(
+                                SingleIdentifier {
+                                    value: "c".into(),
+                                    leaf: Leaf::new(&tokens.tokens[9].location)
+                                }
+                            )),
+                            alias: None,
+                        }]
+                        .into_boxed_slice(),
+                        wheres: None,
+                        order_by: vec![].into_boxed_slice(),
+                        group_by: vec![].into_boxed_slice(),
+                        limit: None,
+                        offset: None,
+                        having: None,
+                    })),
+                    alias: Some(Identifier::Single(SingleIdentifier {
+                        value: "t".into(),
+                        leaf: Leaf::new(&tokens.tokens[12].location)
+                    }))
+                }]
+                .into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+                having: None,
+            })
         );
     }
 }

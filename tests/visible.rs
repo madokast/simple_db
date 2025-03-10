@@ -11,7 +11,7 @@ fn access_keyword() {
 
 #[test]
 fn access_query() {
-    let _s = Statement::Select(Box::new(Select {
+    let _s = Statement::Select(Select {
         items: vec![].into_boxed_slice(),
         from: vec![].into_boxed_slice(),
         wheres: None,
@@ -20,5 +20,5 @@ fn access_query() {
         having: None,
         limit: None,
         offset: None,
-    }));
+    });
 }

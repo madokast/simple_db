@@ -64,7 +64,7 @@ impl Display for Select {
         if let Some(offset) = &self.offset {
             write!(f, " OFFSET {}", offset)?;
         }
-        write!(f, ";")
+        Ok(())
     }
 }
 
@@ -85,13 +85,13 @@ impl Display for SelectItem {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FromItem {
-    pub identifier: Identifier,
+    pub expression: Expression,
     pub alias: Option<Identifier>,
 }
 
 impl Display for FromItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.identifier)?;
+        write!(f, "{}", self.expression)?;
         if let Some(alias) = &self.alias {
             write!(f, " AS {}", alias)?;
         }

@@ -10,7 +10,11 @@ pub struct TokenizeError {
 }
 
 impl TokenizeError {
-    pub fn new<Msg: Into<Box<str>>, SQL: Into<Box<str>>>(message: Msg, location: TokenLocation, raw_sql: SQL) -> Self {
+    pub fn new<Msg: Into<Box<str>>, SQL: Into<Box<str>>>(
+        message: Msg,
+        location: TokenLocation,
+        raw_sql: SQL,
+    ) -> Self {
         Self {
             message: message.into(),
             location: location,

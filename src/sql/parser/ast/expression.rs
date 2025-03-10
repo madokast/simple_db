@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{identifier::Identifier, leaf::Leaf, literal::Literal};
+use super::{identifier::Identifier, leaf::Leaf, literal::Literal, Select};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -8,7 +8,8 @@ pub enum Expression {
     Identifier(Identifier),             // col1 tab1.col1
     BinaryExpression(BinaryExpression), // 1+2
     UnaryExpression(UnaryExpression),   // -1
-    Function(Function),
+    Function(Function),                 // COUNT(*)
+    SubQuery(Box<Select>),              // (SELECT * FROM tab1)
 }
 
 impl Display for Expression {
@@ -19,6 +20,7 @@ impl Display for Expression {
             Expression::BinaryExpression(binary_expression) => write!(f, "({})", binary_expression),
             Expression::UnaryExpression(unary_expression) => write!(f, "{}", unary_expression),
             Expression::Function(function) => write!(f, "{}", function),
+            Expression::SubQuery(sub_query) => write!(f, "({})", sub_query),
         }
     }
 }
