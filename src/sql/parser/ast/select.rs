@@ -3,7 +3,6 @@ use std::fmt::Display;
 use super::expression::{Alias, Expression};
 use super::identifier::Identifier;
 use super::leaf::Leaf;
-use super::literal::Literal;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Select {
@@ -47,6 +46,9 @@ impl Display for Select {
                 write!(f, "{}", identifier)?;
             }
         }
+        if let Some(having) = &self.having {
+            write!(f, " HAVING {}", having)?;
+        }
         if self.order_by.len() > 0 {
             write!(f, " ORDER BY ")?;
             for (index, order_by) in self.order_by.iter().enumerate() {
@@ -68,7 +70,6 @@ impl Display for Select {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectItem {
-    Wildcard(Leaf), // *
     Expression(Expression),
     Alias(Alias),
 }
@@ -76,7 +77,6 @@ pub enum SelectItem {
 impl Display for SelectItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SelectItem::Wildcard(_) => write!(f, "*"),
             SelectItem::Expression(expression) => write!(f, "{}", expression),
             SelectItem::Alias(a) => write!(f, "{}", a),
         }
@@ -101,19 +101,18 @@ impl Display for FromItem {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct OrderBy {
-    pub literal: Literal,
+    pub identifier: Identifier,
     pub asc: bool,
-    pub leaf: Leaf,
 }
 
 impl Display for OrderBy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "ORDER BY {} {}",
-            self.literal,
-            if self.asc { "ASC" } else { "DESC" }
-        )
+        write!(f, "{}", self.identifier)?;
+        if self.asc {
+            write!(f, " ASC")
+        } else {
+            write!(f, " DESC")
+        }
     }
 }
 

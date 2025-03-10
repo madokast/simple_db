@@ -7,6 +7,7 @@ pub enum Identifier {
     Single(SingleIdentifier),
     Combined(Box<[SingleIdentifier]>),
     WithWildcard(Box<[SingleIdentifier]>),
+    Wildcard(Leaf),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -36,7 +37,8 @@ impl Display for Identifier {
                     write!(f, "{}", ident.value)?;
                 }
                 write!(f, ".*")
-            }
+            },
+            Identifier::Wildcard(_) => write!(f, "*"),
         }
     }
 }

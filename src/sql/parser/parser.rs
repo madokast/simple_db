@@ -17,7 +17,7 @@ use super::{
         identifier::{Identifier, SingleIdentifier},
         leaf::Leaf,
         literal::{Literal, Value},
-        select::SelectItem,
+        select::{OrderBy, SelectItem},
         Statement, Statements,
     },
     error::ParseError,
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_select(&mut self) -> Result<Statement, ParseError> {
-        assert_eq!(self.peek().unwrap().token, Token::Keyword(Keyword::SELECT));
+        debug_assert_eq!(self.peek().unwrap().token, Token::Keyword(Keyword::SELECT));
         self.next(); // consume SELECT
 
         let select_items: Box<[SelectItem]> = self.parse_select_items()?;
@@ -71,7 +71,11 @@ impl<'a> Parser<'a> {
 
         let wheres: Option<Expression> = self.parse_where()?;
 
-        let group_by:Box<[Identifier]>  = self.parse_group_by()?;
+        let group_by: Box<[Identifier]> = self.parse_group_by()?;
+
+        let having: Option<Expression> = self.parse_having()?;
+
+        let order_by: Box<[OrderBy]> = self.parse_order_by()?;
 
         // consume Semicolon ; if exists
         self.next_if(|t| *t == Token::Semicolon);
@@ -81,8 +85,8 @@ impl<'a> Parser<'a> {
             from: from,
             wheres: wheres,
             group_by: group_by,
-            having: None,
-            order_by: vec![].into_boxed_slice(),
+            having: having,
+            order_by: order_by,
             limit: None,
             offset: None,
         })))
@@ -98,7 +102,7 @@ impl<'a> Parser<'a> {
                         Token::Comma => self.next(), // consume
                         Token::Semicolon => break,
                         Token::Keyword(kw) => match kw {
-                            Keyword::FROM | Keyword::WHERE => break,
+                            Keyword::FROM | Keyword::WHERE | Keyword::HAVING | Keyword::GROUP | Keyword::ORDER => break,
                             _ => {
                                 return self
                                     .make_error(format_args!("invalid keyword {kw}, expect FROM"))
@@ -149,6 +153,14 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_having(&mut self) -> Result<Option<Expression>, ParseError> {
+        if self.next_if(|t| *t == Token::Keyword(Keyword::HAVING)) {
+            Ok(Some(self.parse_expression(0)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn parse_group_by(&mut self) -> Result<Box<[Identifier]>, ParseError> {
         let mut group_by: Vec<Identifier> = vec![];
         if self.next_if(|t| *t == Token::Keyword(Keyword::GROUP)) {
@@ -159,34 +171,69 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 }
+            } else {
+                return self.make_error(format_args!("expect BY"));
             }
         }
         Ok(group_by.into_boxed_slice())
     }
 
-    fn parse_select_item(&mut self) -> Result<SelectItem, ParseError> {
-        match self.peek() {
-            Some(token) => match &token.token {
-                Token::Multiply => {
-                    let w: SelectItem = SelectItem::Wildcard(Leaf::new(&self.location()));
-                    self.next(); // consume *
-                    Ok(w)
+    fn parse_order_by(&mut self) -> Result<Box<[OrderBy]>, ParseError> {
+        let mut order_by: Vec<OrderBy> = vec![];
+
+        if self.next_if(|t| *t == Token::Keyword(Keyword::ORDER)) {
+            if self.next_if(|t| *t == Token::Keyword(Keyword::BY)) {
+                loop {
+                    let identifier: Identifier = self.parse_identifier()?;
+                    let asc: bool = if self.next_if(|t| *t == Token::Keyword(Keyword::ASC)) {
+                        true
+                    } else if self.next_if(|t| *t == Token::Keyword(Keyword::DESC)) {
+                        false
+                    } else {
+                        true
+                    };
+
+                    order_by.push(OrderBy {
+                        identifier: identifier,
+                        asc: asc,
+                    });
                 }
-                _ => {
-                    let expr: Expression = self.parse_expression(0)?;
-                    // parse as alias
-                    if self.next_if(|t| *t == Token::Keyword(Keyword::AS)) {
+            } else {
+                return self.make_error(format_args!("expect BY"));
+            }
+        }
+        Ok(order_by.into_boxed_slice())
+    }
+
+    fn parse_select_item(&mut self) -> Result<SelectItem, ParseError> {
+        let expr: Expression = self.parse_expression(0)?;
+
+        match self.peek() {
+            Some(token) => {
+                match &token.token {
+                    Token::Keyword(Keyword::AS) => {
+                        self.next(); // consume AS
                         let alias: Identifier = self.parse_identifier()?;
                         Ok(SelectItem::Alias(Alias {
                             expression: expr,
                             alias,
                         }))
-                    } else {
-                        Ok(SelectItem::Expression(expr))
+                    },
+                    Token::Identifier(ident) => {
+                        let alias: Identifier = Identifier::Single(SingleIdentifier {
+                            value: ident.clone(),
+                            leaf: Leaf::new(&token.location),
+                        });
+                        self.next();
+                        Ok(SelectItem::Alias(Alias {
+                            expression: expr,
+                            alias,
+                        }))
                     }
+                    _ => Ok(SelectItem::Expression(expr)),
                 }
             },
-            None => self.make_error(format_args!("unexpected end of input, expect select-item")),
+            None => Ok(SelectItem::Expression(expr))
         }
     }
 
@@ -278,6 +325,11 @@ impl<'a> Parser<'a> {
                 Token::IntegerLiteral(zeros, number) => {
                     Ok(Expression::Literal(self.parse_number(*zeros, *number)?))
                 }
+                Token::Multiply => {
+                    let expr: Expression = Expression::Identifier(Identifier::Wildcard(Leaf::new(&token.location)));
+                    self.next(); // consume *
+                    Ok(expr)
+                }
                 Token::LeftParenthesis => {
                     self.next(); // consume
                     let expr: Expression = self.parse_expression(0)?;
@@ -330,7 +382,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_number(&mut self, _zeros: u16, number: Option<u64>) -> Result<Literal, ParseError> {
-        assert_eq!(
+        debug_assert_eq!(
             self.peek().unwrap().token,
             Token::IntegerLiteral(_zeros, number)
         );
@@ -450,7 +502,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_empty_statement(&mut self) -> Result<Statement, ParseError> {
-        assert_eq!(self.peek().unwrap().token, Token::Semicolon);
+        debug_assert_eq!(self.peek().unwrap().token, Token::Semicolon);
         self.next(); // consume ;
         Ok(Statement::Empty(Leaf::new(&self.location())))
     }
@@ -470,7 +522,7 @@ impl<'a> Parser<'a> {
     }
 
     fn next(&mut self) {
-        assert!(self.index <= self.tokens.len());
+        debug_assert!(self.index <= self.tokens.len());
         self.index += 1;
     }
 
@@ -583,7 +635,7 @@ mod test {
         assert_eq!(
             statements.statements[0],
             Statement::Select(Box::new(Select {
-                items: vec![SelectItem::Wildcard(Leaf::new(&tokens.tokens[1].location))]
+                items: vec![SelectItem::Expression(Expression::Identifier(Identifier::Wildcard(Leaf::new(&tokens.tokens[1].location))))]
                     .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
@@ -657,7 +709,7 @@ mod test {
                             leaf: Leaf::new(&tokens.tokens[1].location),
                         }
                     ))),
-                    SelectItem::Wildcard(Leaf::new(&tokens.tokens[3].location)),
+                    SelectItem::Expression(Expression::Identifier(Identifier::Wildcard(Leaf::new(&tokens.tokens[3].location)))),
                     SelectItem::Expression(Expression::Identifier(Identifier::Combined(
                         vec![
                             SingleIdentifier {
@@ -1437,15 +1489,65 @@ mod test {
                     operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[6].location)),
                 })),
                 order_by: vec![].into_boxed_slice(),
-                group_by: vec![
-                    Identifier::Single(SingleIdentifier {
-                        value: "e".into(),
-                        leaf: Leaf::new(&tokens.tokens[10].location)
-                    })
-                ].into_boxed_slice(),
+                group_by: vec![Identifier::Single(SingleIdentifier {
+                    value: "e".into(),
+                    leaf: Leaf::new(&tokens.tokens[10].location)
+                })]
+                .into_boxed_slice(),
                 limit: None,
                 offset: None,
                 having: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_having() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT count(*) a HAVING a>1;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Alias(
+                    Alias {
+                        expression: Expression::Function(Function { 
+                            name: Identifier::Single(SingleIdentifier {
+                                value: "count".into(),
+                                leaf: Leaf::new(&tokens.tokens[1].location)
+                            }),
+                            args: vec![Expression::Identifier(Identifier::Wildcard(Leaf::new(&tokens.tokens[3].location)))]
+                           .into_boxed_slice(),
+                        }),
+                        alias: Identifier::Single(SingleIdentifier {
+                            value: "a".into(),
+                            leaf: Leaf::new(&tokens.tokens[5].location)
+                        })
+                    }
+                )]
+                .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+                having: Some(Expression::BinaryExpression(BinaryExpression {
+                    left: Box::new(Expression::Identifier(Identifier::Single(
+                        SingleIdentifier {
+                            value: "a".into(),
+                            leaf: Leaf::new(&tokens.tokens[7].location)
+                        }
+                    ))),
+                    right: Box::new(Expression::Literal(Literal {
+                        value: Value::Integer(1),
+                        leaf: Leaf::new(&tokens.tokens[9].location)
+                    })),
+                    operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[8].location)),
+                })),
             }))
         );
     }

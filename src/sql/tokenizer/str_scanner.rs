@@ -38,7 +38,7 @@ impl TokenLocation {
                 match self.previous {
                     '\r' => {
                         // \r\n
-                        assert!(self.column_number == 1)
+                        debug_assert!(self.column_number == 1)
                     }
                     _ => {
                         // new line
