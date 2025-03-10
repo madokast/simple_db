@@ -16,7 +16,7 @@ pub struct Select {
     pub offset: Option<Offset>,
 }
 
-impl WithLocation for Select  {
+impl WithLocation for Select {
     fn location(&self) -> &Location {
         self.items[0].location()
     }
@@ -126,7 +126,7 @@ pub struct OrderBy {
     pub asc: bool,
 }
 
-impl WithLocation for OrderBy  {
+impl WithLocation for OrderBy {
     fn location(&self) -> &Location {
         self.identifier.location()
     }

@@ -8,7 +8,7 @@ pub struct Literal {
     pub leaf: Location,
 }
 
-impl WithLocation for Literal  {
+impl WithLocation for Literal {
     fn location(&self) -> &Location {
         &self.leaf
     }

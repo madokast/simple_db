@@ -13,12 +13,11 @@ pub trait WithLocation {
                 0
             }
         };
-        let near: String = raw_sql
-            .chars()
-            .skip(skip)
-            .take(SKIP_BACKWARD * 2)
-            .collect();
-        format!("Ln {}, Col {} near \"{}\"", loc.line_number, loc.column_number, near)
+        let near: String = raw_sql.chars().skip(skip).take(SKIP_BACKWARD * 2).collect();
+        format!(
+            "Ln {}, Col {} near \"{}\"",
+            loc.line_number, loc.column_number, near
+        )
     }
 }
 // 位置信息

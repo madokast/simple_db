@@ -333,8 +333,9 @@ impl<'a> Parser<'a> {
                     Ok(Expression::Literal(self.parse_number(*zeros, *number)?))
                 }
                 Token::Multiply => {
-                    let expr: Expression =
-                        Expression::Identifier(Identifier::Wildcard(Location::new(&token.location)));
+                    let expr: Expression = Expression::Identifier(Identifier::Wildcard(
+                        Location::new(&token.location),
+                    ));
                     self.next(); // consume *
                     Ok(expr)
                 }
@@ -363,11 +364,17 @@ impl<'a> Parser<'a> {
             Some(token) => match token.token {
                 Token::Plus => Ok(Some(BinaryOperator::Plus(Location::new(self.location())))),
                 Token::Minus => Ok(Some(BinaryOperator::Minus(Location::new(self.location())))),
-                Token::Multiply => Ok(Some(BinaryOperator::Multiply(Location::new(self.location())))),
+                Token::Multiply => Ok(Some(BinaryOperator::Multiply(Location::new(
+                    self.location(),
+                )))),
                 Token::Divide => Ok(Some(BinaryOperator::Divide(Location::new(self.location())))),
                 Token::Equal => Ok(Some(BinaryOperator::Equal(Location::new(self.location())))),
-                Token::NotEqual => Ok(Some(BinaryOperator::NotEqual(Location::new(self.location())))),
-                Token::LessThan => Ok(Some(BinaryOperator::LessThan(Location::new(self.location())))),
+                Token::NotEqual => Ok(Some(BinaryOperator::NotEqual(Location::new(
+                    self.location(),
+                )))),
+                Token::LessThan => Ok(Some(BinaryOperator::LessThan(Location::new(
+                    self.location(),
+                )))),
                 Token::GreaterThan => Ok(Some(BinaryOperator::GreaterThan(Location::new(
                     self.location(),
                 )))),
@@ -996,7 +1003,9 @@ mod test {
                                 value: Value::Integer(2),
                                 leaf: Location::new(&tokens.tokens[3].location)
                             })),
-                            operator: BinaryOperator::Plus(Location::new(&tokens.tokens[2].location)),
+                            operator: BinaryOperator::Plus(Location::new(
+                                &tokens.tokens[2].location
+                            )),
                         })),
                         right: Box::new(Expression::Literal(Literal {
                             value: Value::Integer(3),
@@ -1142,9 +1151,13 @@ mod test {
                                 value: Value::Integer(4),
                                 leaf: Location::new(&tokens.tokens[6].location)
                             })),
-                            operator: BinaryOperator::Plus(Location::new(&tokens.tokens[5].location)),
+                            operator: BinaryOperator::Plus(Location::new(
+                                &tokens.tokens[5].location
+                            )),
                         })),
-                        operator: BinaryOperator::Multiply(Location::new(&tokens.tokens[2].location)),
+                        operator: BinaryOperator::Multiply(Location::new(
+                            &tokens.tokens[2].location
+                        )),
                     }
                 ))]
                 .into_boxed_slice(),
@@ -1306,7 +1319,9 @@ mod test {
                                     leaf: Location::new(&tokens.tokens[7].location)
                                 }
                             ))),
-                            operator: BinaryOperator::Plus(Location::new(&tokens.tokens[6].location)),
+                            operator: BinaryOperator::Plus(Location::new(
+                                &tokens.tokens[6].location
+                            )),
                         })
                     ]
                     .into_boxed_slice(),
@@ -1448,7 +1463,9 @@ mod test {
                         value: Value::Integer(1),
                         leaf: Location::new(&tokens.tokens[7].location)
                     })),
-                    operator: BinaryOperator::GreaterThan(Location::new(&tokens.tokens[6].location)),
+                    operator: BinaryOperator::GreaterThan(Location::new(
+                        &tokens.tokens[6].location
+                    )),
                 })),
                 order_by: vec![].into_boxed_slice(),
                 group_by: vec![].into_boxed_slice(),
@@ -1498,7 +1515,9 @@ mod test {
                         value: Value::Integer(1),
                         leaf: Location::new(&tokens.tokens[7].location)
                     })),
-                    operator: BinaryOperator::GreaterThan(Location::new(&tokens.tokens[6].location)),
+                    operator: BinaryOperator::GreaterThan(Location::new(
+                        &tokens.tokens[6].location
+                    )),
                 })),
                 order_by: vec![].into_boxed_slice(),
                 group_by: vec![Identifier::Single(SingleIdentifier {
@@ -1560,7 +1579,9 @@ mod test {
                         value: Value::Integer(1),
                         leaf: Location::new(&tokens.tokens[9].location)
                     })),
-                    operator: BinaryOperator::GreaterThan(Location::new(&tokens.tokens[8].location)),
+                    operator: BinaryOperator::GreaterThan(Location::new(
+                        &tokens.tokens[8].location
+                    )),
                 })),
             })
         );

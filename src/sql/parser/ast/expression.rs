@@ -1,6 +1,11 @@
 use std::fmt::Display;
 
-use super::{identifier::Identifier, leaf::{Location, WithLocation}, literal::Literal, Select};
+use super::{
+    identifier::Identifier,
+    leaf::{Location, WithLocation},
+    literal::Literal,
+    Select,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -154,7 +159,7 @@ impl BinaryOperator {
     }
 }
 
-impl WithLocation for BinaryOperator  {
+impl WithLocation for BinaryOperator {
     fn location(&self) -> &Location {
         match self {
             BinaryOperator::Plus(location) => location,
