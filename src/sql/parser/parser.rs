@@ -66,13 +66,17 @@ impl<'a> Parser<'a> {
 
         let select_items: Box<[SelectItem]> = self.parse_select_items()?;
 
+        let from: Box<[Identifier]> = self.parse_from()?;
+
+        let wheres: Option<Expression> = self.parse_where()?;
+
         // consume Semicolon ; if exists
         self.next_if(|t| *t == Token::Semicolon);
 
         Ok(Statement::Select(Box::new(Select {
             items: select_items,
-            from: vec![].into_boxed_slice(),
-            wheres: None,
+            from: from,
+            wheres: wheres,
             order_by: vec![].into_boxed_slice(),
             group_by: vec![].into_boxed_slice(),
             limit: None,
@@ -106,6 +110,29 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(items.into_boxed_slice())
+    }
+
+    fn parse_from(&mut self) -> Result<Box<[Identifier]>, ParseError> {
+        if self.next_if(|t| *t == Token::Keyword(Keyword::FROM)) {
+            let mut from: Vec<Identifier> = vec![];
+            loop {
+                from.push(self.parse_identifier()?);
+                if !self.next_if(|t| *t == Token::Comma) {
+                    break;
+                }
+            }
+            Ok(from.into_boxed_slice())
+        } else {
+            Ok(vec![].into_boxed_slice())
+        }
+    }
+
+    fn parse_where(&mut self) -> Result<Option<Expression>, ParseError> {
+        if self.next_if(|t| *t == Token::Keyword(Keyword::WHERE)) {
+            Ok(Some(self.parse_expression(0)?))
+        } else {
+            Ok(None)
+        }
     }
 
     fn parse_select_item(&mut self) -> Result<SelectItem, ParseError> {
@@ -1165,6 +1192,120 @@ mod test {
                 .into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_select_a_from_b() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT a FROM b;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::SingleIdentifier(SingleIdentifier {
+                        value: "a".into(),
+                        leaf: Leaf::new(&tokens.tokens[1].location)
+                    })
+                ))]
+                .into_boxed_slice(),
+                from: vec![Identifier::SingleIdentifier(SingleIdentifier {
+                    value: "b".into(),
+                    leaf: Leaf::new(&tokens.tokens[3].location)
+                })]
+                .into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_select_a_from_c_d() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT a FROM c, d;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::SingleIdentifier(SingleIdentifier {
+                        value: "a".into(),
+                        leaf: Leaf::new(&tokens.tokens[1].location)
+                    })
+                ))]
+                .into_boxed_slice(),
+                from: vec![
+                    Identifier::SingleIdentifier(SingleIdentifier {
+                        value: "c".into(),
+                        leaf: Leaf::new(&tokens.tokens[3].location)
+                    }),
+                    Identifier::SingleIdentifier(SingleIdentifier {
+                        value: "d".into(),
+                        leaf: Leaf::new(&tokens.tokens[5].location)
+                    })
+                ]
+                .into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_select_a_from_b_where_c() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT a FROM b WHERE c>1;").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::SingleIdentifier(SingleIdentifier {
+                        value: "a".into(),
+                        leaf: Leaf::new(&tokens.tokens[1].location)
+                    })
+                ))]
+                .into_boxed_slice(),
+                from: vec![Identifier::SingleIdentifier(SingleIdentifier {
+                    value: "b".into(),
+                    leaf: Leaf::new(&tokens.tokens[3].location)
+                })]
+                .into_boxed_slice(),
+                wheres: Some(Expression::BinaryExpression(BinaryExpression {
+                    left: Box::new(Expression::Identifier(Identifier::SingleIdentifier(
+                        SingleIdentifier {
+                            value: "c".into(),
+                            leaf: Leaf::new(&tokens.tokens[5].location)
+                        }
+                    ))),
+                    right: Box::new(Expression::Literal(Literal {
+                        value: Value::Integer(1),
+                        leaf: Leaf::new(&tokens.tokens[7].location)
+                    })),
+                    operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[6].location)),
+                })),
                 order_by: vec![].into_boxed_slice(),
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
