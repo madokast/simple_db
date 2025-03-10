@@ -32,13 +32,16 @@ const ALL_KEY_WORDS: [Keyword; 19] = [
     AND, OR, NOT, HAVING,
 ];
 
-static KEY_WORD_MAP: LazyLock<HashMap<&'static str, Keyword>> = LazyLock::new(|| {
+static KEYWORD_MAP: LazyLock<HashMap<&'static str, Keyword>> = LazyLock::new(|| {
     let mut key_words: HashMap<&'static str, Keyword> = HashMap::new();
     Keyword::all().iter().for_each(|kw| {
         key_words.insert(kw.to_str(), *kw);
     });
     key_words
 });
+
+static KEYWORD_MAX_LENGTH: LazyLock<usize> = LazyLock::new(|| 
+    Keyword::all().iter().map(|kw| kw.to_str().len()).max().unwrap());
 
 impl Keyword {
     pub fn all() -> &'static [Keyword] {
@@ -47,16 +50,14 @@ impl Keyword {
 
     /// 获取关键字的映射，不应频繁调用
     pub fn map() -> &'static HashMap<&'static str, Keyword> {
-        LazyLock::force(&KEY_WORD_MAP)
+        // LazyLock::force(&KEY_WORD_MAP)
+        &*KEYWORD_MAP
     }
 
     /// 获取关键字的最大长度，不应频繁调用
     pub fn max_length() -> usize {
-        ALL_KEY_WORDS
-            .iter()
-            .map(|kw| kw.to_str().len())
-            .max()
-            .unwrap()
+        // *LazyLock::force(&KEYWORD_MAX_LENGTH)
+        *&*KEYWORD_MAX_LENGTH
     }
 
     pub fn to_str(&self) -> &'static str {
