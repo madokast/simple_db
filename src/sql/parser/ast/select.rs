@@ -11,6 +11,7 @@ pub struct Select {
     pub from: Box<[FromItem]>,
     pub wheres: Option<Expression>,
     pub group_by: Box<[Identifier]>,
+    pub having: Option<Expression>,
     pub order_by: Box<[OrderBy]>,
     pub limit: Option<Limit>,
     pub offset: Option<Offset>,

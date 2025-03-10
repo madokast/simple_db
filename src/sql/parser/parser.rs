@@ -71,6 +71,8 @@ impl<'a> Parser<'a> {
 
         let wheres: Option<Expression> = self.parse_where()?;
 
+        let group_by:Box<[Identifier]>  = self.parse_group_by()?;
+
         // consume Semicolon ; if exists
         self.next_if(|t| *t == Token::Semicolon);
 
@@ -78,8 +80,9 @@ impl<'a> Parser<'a> {
             items: select_items,
             from: from,
             wheres: wheres,
+            group_by: group_by,
+            having: None,
             order_by: vec![].into_boxed_slice(),
-            group_by: vec![].into_boxed_slice(),
             limit: None,
             offset: None,
         })))
@@ -144,6 +147,21 @@ impl<'a> Parser<'a> {
         } else {
             Ok(None)
         }
+    }
+
+    fn parse_group_by(&mut self) -> Result<Box<[Identifier]>, ParseError> {
+        let mut group_by: Vec<Identifier> = vec![];
+        if self.next_if(|t| *t == Token::Keyword(Keyword::GROUP)) {
+            if self.next_if(|t| *t == Token::Keyword(Keyword::BY)) {
+                loop {
+                    group_by.push(self.parse_identifier()?);
+                    if !self.next_if(|t| *t == Token::Comma) {
+                        break;
+                    }
+                }
+            }
+        }
+        Ok(group_by.into_boxed_slice())
     }
 
     fn parse_select_item(&mut self) -> Result<SelectItem, ParseError> {
@@ -522,6 +540,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -549,6 +568,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -571,6 +591,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -611,6 +632,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -657,6 +679,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -682,6 +705,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -715,6 +739,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -756,6 +781,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -797,6 +823,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -842,6 +869,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         )
     }
@@ -877,6 +905,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -919,6 +948,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -963,6 +993,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -989,6 +1020,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1015,6 +1047,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1057,6 +1090,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1086,6 +1120,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1119,6 +1154,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1167,6 +1203,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1217,6 +1254,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1252,6 +1290,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1301,6 +1340,7 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
@@ -1350,7 +1390,64 @@ mod test {
                 group_by: vec![].into_boxed_slice(),
                 limit: None,
                 offset: None,
+                having: None,
             }))
         );
     }
+
+    #[test]
+    fn test_select_a_from_b_where_c_group_by_e() {
+        let tokens: ParsedTokens = Tokenizer::new()
+            .tokenize("SELECT a FROM b WHERE c>1 GROUP BY e;")
+            .unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::Identifier(
+                    Identifier::Single(SingleIdentifier {
+                        value: "a".into(),
+                        leaf: Leaf::new(&tokens.tokens[1].location)
+                    })
+                ))]
+                .into_boxed_slice(),
+                from: vec![FromItem {
+                    identifier: Identifier::Single(SingleIdentifier {
+                        value: "b".into(),
+                        leaf: Leaf::new(&tokens.tokens[3].location)
+                    }),
+                    alias: None,
+                }]
+                .into_boxed_slice(),
+                wheres: Some(Expression::BinaryExpression(BinaryExpression {
+                    left: Box::new(Expression::Identifier(Identifier::Single(
+                        SingleIdentifier {
+                            value: "c".into(),
+                            leaf: Leaf::new(&tokens.tokens[5].location)
+                        }
+                    ))),
+                    right: Box::new(Expression::Literal(Literal {
+                        value: Value::Integer(1),
+                        leaf: Leaf::new(&tokens.tokens[7].location)
+                    })),
+                    operator: BinaryOperator::GreaterThan(Leaf::new(&tokens.tokens[6].location)),
+                })),
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![
+                    Identifier::Single(SingleIdentifier {
+                        value: "e".into(),
+                        leaf: Leaf::new(&tokens.tokens[10].location)
+                    })
+                ].into_boxed_slice(),
+                limit: None,
+                offset: None,
+                having: None,
+            }))
+        );
+    }
+
 }
