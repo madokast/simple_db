@@ -194,6 +194,22 @@ impl<'a> Parser<'a> {
                 Token::IntegerLiteral(zeros, number) => {
                     Ok(Expression::Literal(self.parse_number(*zeros, *number)?))
                 }
+                Token::LeftParenthesis => {
+                    self.next(); // consume
+                    let expr: Expression = self.parse_expression(0)?;
+                    match self.peek() {
+                        Some(token) => match token.token {
+                            Token::RightParenthesis => {
+                                self.next(); // consume
+                                Ok(expr)
+                            }
+                            _ => self.make_error(format_args!(
+                                "invalid token {token}, expect )"
+                            )),
+                        },
+                        None => self.make_error(format_args!("unexpected end of input, expect )")),
+                    }
+                }
                 _ => self.make_error(format_args!("invalid token {token}, expect expression")),
             },
             None => self.make_error(format_args!("unexpected end of input, expect select-item")),
@@ -882,6 +898,72 @@ mod test {
                     }
                 ))]
                 .into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_paren_1() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT (1);").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(Expression::Literal(Literal {
+                    value: Value::Integer(1),
+                    leaf: Leaf::new(&tokens.tokens[2].location)
+                }))].into_boxed_slice(),
+                from: vec![].into_boxed_slice(),
+                wheres: None,
+                order_by: vec![].into_boxed_slice(),
+                group_by: vec![].into_boxed_slice(),
+                limit: None,
+                offset: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn test_2_mul_sum_of_3_and_4() {
+        let tokens: ParsedTokens = Tokenizer::new().tokenize("SELECT 2*(3+4);").unwrap();
+        let mut parser: Parser<'_> = Parser::new(&tokens);
+        let statements: Statements = parser.parse().unwrap();
+        assert_eq!(statements.statements.len(), 1);
+        println!("{:}", tokens);
+        println!("{:}", statements.statements[0]);
+        assert_eq!(
+            statements.statements[0],
+            Statement::Select(Box::new(Select {
+                items: vec![SelectItem::Expression(
+                    Expression::BinaryExpression(BinaryExpression {
+                        left: Box::new(Expression::Literal(Literal {
+                            value: Value::Integer(2),
+                            leaf: Leaf::new(&tokens.tokens[1].location)
+                        })),
+                        right: Box::new(Expression::BinaryExpression(BinaryExpression {
+                            left: Box::new(Expression::Literal(Literal {
+                                value: Value::Integer(3),
+                                leaf: Leaf::new(&tokens.tokens[4].location)
+                            })),
+                            right: Box::new(Expression::Literal(Literal {
+                                value: Value::Integer(4),
+                                leaf: Leaf::new(&tokens.tokens[6].location)
+                            })),
+                            operator: BinaryOperator::Plus(Leaf::new(&tokens.tokens[5].location)),
+                        })),
+                        operator: BinaryOperator::Multiply(Leaf::new(&tokens.tokens[2].location)),
+                    })
+                )].into_boxed_slice(),
                 from: vec![].into_boxed_slice(),
                 wheres: None,
                 order_by: vec![].into_boxed_slice(),

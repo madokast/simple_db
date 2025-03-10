@@ -8,7 +8,6 @@ pub enum Expression {
     Identifier(Identifier),             // col1 tab1.col1
     BinaryExpression(BinaryExpression), // 1+2
     UnaryExpression(UnaryExpression),   // -1
-    Parenthesized(Box<Expression>),     // (1+2)
 }
 
 impl Display for Expression {
@@ -16,9 +15,8 @@ impl Display for Expression {
         match self {
             Expression::Literal(literal) => write!(f, "{}", literal),
             Expression::Identifier(identifier) => write!(f, "{}", identifier),
-            Expression::BinaryExpression(binary_expression) => write!(f, "{}", binary_expression),
+            Expression::BinaryExpression(binary_expression) => write!(f, "({})", binary_expression),
             Expression::UnaryExpression(unary_expression) => write!(f, "{}", unary_expression),
-            Expression::Parenthesized(expression) => write!(f, "({})", expression),
         }
     }
 }
