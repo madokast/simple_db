@@ -59,7 +59,6 @@ impl TokenLocation {
 pub struct Scanner<'a> {
     peekable: Peekable<Chars<'a>>,
     location: TokenLocation,
-    text: &'a str,
 }
 
 impl<'a> Scanner<'a> {
@@ -67,7 +66,6 @@ impl<'a> Scanner<'a> {
         Self {
             peekable: text.chars().peekable(),
             location: TokenLocation::new(),
-            text: text,
         }
     }
 
@@ -85,10 +83,6 @@ impl<'a> Scanner<'a> {
         if let Some(c) = self.peekable.next() {
             self.location.next_char(c);
         }
-    }
-
-    pub fn text(&self) -> &'a str {
-        self.text
     }
 }
 
