@@ -48,10 +48,10 @@ impl<'a> Tokenizer<'a> {
         loop {
             match self.peek_char() {
                 Some(first) => match first {
-                    'a'..='z' | 'A'..='Z' => return self.next_id_kw(first),
-                    '\'' => return self.next_string(),
-                    '0'..='9' => return self.next_number(first),
-                    ' ' | '\r' | '\n' => self.next_char(),
+                    'a'..='z' | 'A'..='Z' => return self.next_identifier_or_keyword(first),
+                    '\'' => return self.next_string_literal(),
+                    '0'..='9' => return self.next_number_literal(first),
+                    ' ' | '\r' | '\n' => self.next_char(), // continue
                     '=' => return self.token_and_next(Token::Equal),
                     ';' => return self.token_and_next(Token::Semicolon),
                     '.' => return self.token_and_next(Token::Period),
@@ -94,7 +94,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     /// Read the next string literal
-    fn next_string(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_string_literal(&mut self) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = self.location();
         let mut text: String = String::new();
 
@@ -215,7 +215,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     /// Reads the next number
-    fn next_number(&mut self, first: char) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_number_literal(&mut self, first: char) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = self.location();
 
         let mut leading_zero: u16 = 0;
@@ -276,14 +276,24 @@ impl<'a> Tokenizer<'a> {
     }
 
     /// Reads the next identifier or keyword token from the scanner
-    fn next_id_kw(&mut self, first: char) -> Result<Option<ParsedToken>, TokenizeError> {
+    fn next_identifier_or_keyword(
+        &mut self,
+        first: char,
+    ) -> Result<Option<ParsedToken>, TokenizeError> {
         let start_location: super::str_scanner::TokenLocation = self.location();
 
         let mut word: String = first.to_string();
         self.next_char(); // consume
+
+        let mut all_alphabet: bool = true;
         while let Some(c) = self.peek_char() {
             match c {
-                'a'..='z' | 'A'..='Z' | '_' => {
+                'a'..='z' | 'A'..='Z' => {
+                    word.push(c);
+                    self.next_char();
+                }
+                '0'..='9' | '_' => {
+                    all_alphabet = false;
                     word.push(c);
                     self.next_char();
                 }
@@ -291,7 +301,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
-        let token: Token = if word.len() > self.ley_word_max_length {
+        let token: Token = if !all_alphabet || word.len() > self.ley_word_max_length {
             Token::Identifier(word.as_str().into())
         } else {
             let upper: String = word.to_ascii_uppercase();
@@ -548,7 +558,7 @@ mod test {
 
     #[test]
     fn select_abc_from_def_where() {
-        let tokens = Tokenizer::new("SELECT abc, kk, 1 from dEf where cc > 12;")
+        let tokens = Tokenizer::new("SELECT abc0, kk, 1 from dEf where cc > 12;")
             .tokenize()
             .unwrap();
         println!("[{}]", tokens);
@@ -557,7 +567,7 @@ mod test {
             tokens,
             vec![
                 Token::Keyword(Keyword::SELECT),
-                Token::Identifier("abc".into()),
+                Token::Identifier("abc0".into()),
                 Token::Comma,
                 Token::Identifier("kk".into()),
                 Token::Comma,
