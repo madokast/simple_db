@@ -241,7 +241,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, priority: usize) -> Result<Expression, ParseError> {
-        // 前缀表达式
+        // 前缀运算符
         let prefix: Option<UnaryOperator> = self.parse_prefix_operator()?;
 
         // 表达式左侧
@@ -259,6 +259,16 @@ impl<'a> Parser<'a> {
             let operator: Option<BinaryOperator> = self.peek_binary_operator()?;
             match operator {
                 Some(op) => {
+                    // 根据当前优先级判断是否连接
+                    // 例一 1+2*3，首先初始优先级为 0，left 读入 1，op 读入 +
+                    // + 优先级大于 0，所以 1+ 合起来，继续读下一个表达式带上 + 的优先级
+                    // 下一次读取时 2*3 合起来了，因为 * 优先级大于 +，一起返回
+                    // 最后输出 1+(2*3)
+                    // 
+                    // 例二 1*2+3，left 读入 1，op 读入 *，继续读下一个表达式带上 * 的优先级
+                    // 下一次读取 2 后不再和 + 结合，因为 * 优先级大，直接返回 2，left 变为 (1*2)
+                    // loop 第一次结束，继续循环读下一个运算符 +
+                    // 因为第一层的优先级 0 是最低的，总是形成 BinaryExpression，所以结合为 ((1*2)+3)
                     if priority < op.priority() {
                         self.next(); // consume operator
                         let right: Expression = self.parse_expression(op.priority())?;
