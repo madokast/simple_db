@@ -6,6 +6,5 @@ pub mod ast;
 /// error 定义 ParseError 错误类型
 pub mod error;
 
-
 /// parser 实现词法分析
 pub mod parser;

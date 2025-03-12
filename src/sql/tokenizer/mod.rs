@@ -1,6 +1,5 @@
 /// tokenizer 提供 SQL 语句的词法分析
 
-
 /// token 定义各种 token 类型，包括关键字、标识符、字面量等
 pub mod token;
 
