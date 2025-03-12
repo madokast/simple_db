@@ -1,5 +1,8 @@
 use crate::sql::tokenizer::str_scanner::TokenLocation;
 
+/// AST 所有节点都是 WithLocation
+/// 表示节点在原 SQL 语句中的位置信息
+/// 用于在错误信息中定位
 pub trait WithLocation {
     fn location(&self) -> &Location;
 
@@ -20,7 +23,7 @@ pub trait WithLocation {
         )
     }
 }
-// 位置信息
+// Location 位置信息具体类
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Location {
     pub line_number: usize,

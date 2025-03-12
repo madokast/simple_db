@@ -9,12 +9,16 @@ use std::fmt::Display;
 use leaf::{Location, WithLocation};
 pub use select::Select;
 
+/// Statements SQL 语句，一条 SQL 语句可能包含多条语句
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statements {
     pub statements: Box<[Statement]>,
+
+    /// 原始 SQL 语句，用于错误提示
     pub raw_sql: Box<str>,
 }
 
+/// Statement 定义各种 SQL 语句类型
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Select(Select),
