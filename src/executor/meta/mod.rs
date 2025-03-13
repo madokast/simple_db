@@ -1,5 +1,5 @@
-/// 支持的数据类型
-pub mod data_type;
+/// 一行
+pub mod row;
 
 /// 列（字段）元信息
 pub mod column;
@@ -8,7 +8,4 @@ pub mod column;
 pub mod schema;
 
 /// 数据源
-pub mod source;
-
-/// 一行
-pub mod row;
+pub mod data_source;
