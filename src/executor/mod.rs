@@ -6,3 +6,9 @@ pub mod meta;
 
 /// 执行计划
 pub mod plan;
+
+/// 执行器上下文
+pub mod context;
+
+/// 错误对象
+pub mod error;

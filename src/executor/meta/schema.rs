@@ -10,6 +10,17 @@ pub struct Schema {
     pub columns: Box<[Column]>,
 }
 
+impl Schema {
+    pub fn contains_column_name(&self, name: &str) -> bool {
+        for column in self.columns.iter() {
+            if column.name.as_ref() == name {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 impl Display for Schema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::executor::types::{
     flout64::Float64, int32::Int32, varchar::Varchar, DataType, OwnValue,
 };
@@ -5,15 +7,16 @@ use crate::executor::types::{
 use super::schema::Schema;
 
 /// Row 行接口
-pub trait Row<'a> {
-    fn len(&self) -> usize;
+pub trait Row: Debug {
     fn is_null(&self, index: usize) -> bool;
     fn get_int32(&self, index: usize) -> Int32;
     fn get_float64(&self, index: usize) -> Float64;
-    fn get_varchar(&'a self, index: usize) -> Varchar<'a>;
-    fn get_string(&'a self, index: usize) -> &'a str;
+    fn get_varchar<'a>(&'a self, index: usize) -> Varchar<'a>;
+    fn get_string<'a>(&'a self, index: usize) -> &'a str;
 
-    fn to_string(&'a self, schema: &Schema) -> String {
+    fn get(&self, index: usize) -> &OwnValue;
+
+    fn to_string<'a>(&'a self, schema: &Schema) -> String {
         let mut buf: String = "[".to_string();
         for (index, column) in schema.columns.iter().enumerate() {
             if index > 0 {
@@ -47,7 +50,7 @@ pub trait Row<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SimpleMemoryRow {
     values: Box<[OwnValue]>,
 }
@@ -60,11 +63,7 @@ impl SimpleMemoryRow {
     }
 }
 
-impl Row<'_> for SimpleMemoryRow {
-    fn len(&self) -> usize {
-        self.values.len()
-    }
-
+impl Row for SimpleMemoryRow {
     fn is_null(&self, index: usize) -> bool {
         match &self.values[index] {
             OwnValue::Null => true,
@@ -98,5 +97,9 @@ impl Row<'_> for SimpleMemoryRow {
             OwnValue::String(s) => s,
             _ => panic!("type mismatch"),
         }
+    }
+
+    fn get(&self, index: usize) -> &OwnValue {
+        &self.values[index]
     }
 }

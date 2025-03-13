@@ -1,6 +1,9 @@
 /// 一行
 pub mod row;
 
+/// 多行
+pub mod rows;
+
 /// 列（字段）元信息
 pub mod column;
 

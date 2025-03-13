@@ -23,7 +23,7 @@ impl Display for DataType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum OwnValue {
     Int32(int32::Int32),
     Float64(flout64::Float64),

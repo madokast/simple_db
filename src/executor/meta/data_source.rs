@@ -2,14 +2,18 @@ use std::fmt::{Debug, Display};
 
 use super::{
     row::{Row, SimpleMemoryRow},
+    rows::Rows,
     schema::Schema,
 };
 
-pub trait DataSource {
+pub trait DataSource: Debug {
+    fn name(&self) -> String;
     fn schema(&self) -> &Schema;
-    fn read(&self) -> impl Iterator<Item = &impl Row>;
+    fn read<'a>(&'a self) -> Box<dyn Iterator<Item = &'a dyn Row> + 'a>;
+    fn batch_read<'a>(&'a self) -> Box<dyn Iterator<Item = &'a dyn Rows> + 'a>;
 }
 
+#[derive(Clone)]
 pub struct SimpleMemoryDataSource {
     schema: Schema,
     rows: Vec<SimpleMemoryRow>,
@@ -29,13 +33,20 @@ impl SimpleMemoryDataSource {
 }
 
 impl DataSource for SimpleMemoryDataSource {
+    fn name(&self) -> String {
+        self.schema.name.as_ref().to_string()
+    }
+
     fn schema(&self) -> &Schema {
         &self.schema
     }
 
-    #[allow(refining_impl_trait)]
-    fn read(&self) -> impl Iterator<Item = &SimpleMemoryRow> {
-        self.rows.iter()
+    fn read<'a>(&'a self) -> Box<dyn Iterator<Item = &'a dyn Row> + 'a> {
+        Box::new(self.rows.iter().map(|r| r as &dyn Row))
+    }
+
+    fn batch_read<'a>(&'a self) -> Box<dyn Iterator<Item = &'a dyn Rows> + 'a> {
+        panic!("not implemented")
     }
 }
 
@@ -51,20 +62,17 @@ impl Debug for SimpleMemoryDataSource {
     }
 }
 
+#[cfg(test)]
 mod test {
+    use super::*;
     use crate::executor::{
-        meta::{
-            column::Column,
-            data_source::{DataSource, SimpleMemoryDataSource},
-            row::{Row, SimpleMemoryRow},
-            schema::Schema,
-        },
+        meta::{column::Column, schema::Schema},
         types::{int32::Int32, DataType, OwnValue},
     };
 
     #[test]
     fn test_data_source() {
-        let column_name: Column = Column {
+        let column_name = Column {
             name: "name".into(),
             data_type: DataType::Varchar(32),
             nullable: true,

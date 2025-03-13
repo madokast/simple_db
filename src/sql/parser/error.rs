@@ -42,7 +42,7 @@ impl Display for ParseError {
             .take(SKIP_BACKWARD * 2)
             .collect();
         f.write_fmt(format_args!(
-            "error {} in Ln {}, Col {} near \"{}\"",
+            "parse error {} in Ln {}, Col {} near \"{}\"",
             self.message, self.location.line_number, self.location.column_number, near
         ))
     }
