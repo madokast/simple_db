@@ -26,7 +26,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     /// tokenize the sql
-    pub fn tokenize(&mut self) -> Result<ParsedTokens, TokenizeError> {
+    pub fn tokenize(&mut self) -> Result<ParsedTokens<'a>, TokenizeError> {
         let mut tokens: Vec<ParsedToken> = vec![];
 
         // 循环获取下一个 token

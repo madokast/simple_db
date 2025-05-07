@@ -30,7 +30,8 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(tokens: &'a ParsedTokens) -> Self {
+    pub fn new<'b>(tokens: &'a ParsedTokens<'b>) -> Self 
+    where 'b:'a{
         Self {
             tokens: tokens.tokens.as_ref(),
             raw_sql: tokens.raw_sql.as_ref(),
